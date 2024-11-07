@@ -65,12 +65,12 @@ class SubscriptionService:
                     # 解約記録作成
                     cursor.execute("""
                         INSERT INTO user_payment (
-                            email, plan, amount, payment_status,
-                            next_process_date, processed_by, message
+                            email, plan, amount, processed_date, processed_by, message
                         ) VALUES (
-                            %s, %s, 0, false, NULL, 'cancellation', 'プラン解約'
+                            %s, %s, 0, NOW(), %s, %s
                         )
-                    """, (user['email'], user['plan']))
+                    """, (user['email'], user['plan'], 'auto_subscription', 'プラン解約'))
+
 
                     # アカウント更新
                     cursor.execute("""
@@ -78,7 +78,6 @@ class SubscriptionService:
                         SET 
                             next_process_type = NULL,
                             next_process_date = NULL,
-                            payment_status = false,
                             plan = 'Free',
                             monthly_cost = 0,
                             next_plan = NULL
@@ -98,7 +97,6 @@ class SubscriptionService:
                 WHERE 
                     next_process_date <= NOW()
                     AND next_process_type = 'plan_change'
-                    AND payment_status = true
             """)
             plan_change_users = cursor.fetchall()
             print(f"プラン変更対象ユーザー数: {len(plan_change_users)}")
@@ -124,20 +122,19 @@ class SubscriptionService:
                     # 支払い記録作成
                     cursor.execute("""
                         INSERT INTO user_payment (
-                            email, plan, amount, payment_status,
-                            next_process_date, processed_by, transaction_id, message
+                            email, plan, amount, processed_date, processed_by, transaction_id, message
                         ) VALUES (
-                            %s, %s, %s, %s, %s, 'plan_change', %s, %s
+                            %s, %s, %s, NOW(), %s, %s, %s
                         ) RETURNING id
                     """, (
                         user['email'],
                         user['next_plan'],
                         amount,
-                        success,
-                        user['next_process_date'],
+                        'plan_change',
                         transaction_id,
                         f"{user['plan']}から{user['next_plan']}へのプラン変更" if success else error_message
                     ))
+
 
                     if success:
                         cursor.execute("""
@@ -200,18 +197,14 @@ class SubscriptionService:
                     # 支払い記録作成
                     cursor.execute("""
                         INSERT INTO user_payment (
-                            email, plan, amount, payment_status,
-                            next_process_date, processed_by, transaction_id, message
+                            email, plan, amount, processed_date, processed_by, transaction_id, message
                         ) VALUES (
-                            %s, %s, %s, %s, 
-                            NOW() + INTERVAL %s, %s, %s, %s
+                            %s, %s, %s, NOW(), %s, %s, %s
                         ) RETURNING id
                     """, (
                         user['email'],
                         user['plan'],
                         amount,
-                        success,
-                        Config.get_next_process_interval(),  # INTERVAL パラメータ
                         'auto_subscription',
                         transaction_id,
                         '定期支払い' if success else error_message
@@ -223,7 +216,6 @@ class SubscriptionService:
                             SET 
                                 last_payment_date = NOW(),
                                 next_process_date = NOW() + INTERVAL %s,
-                                payment_status = true,
                                 monthly_cost = 0
                             WHERE email = %s
                             RETURNING next_process_date
