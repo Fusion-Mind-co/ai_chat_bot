@@ -28,7 +28,7 @@ class StripeService:
                 currency='jpy',
                 customer=customer.id,
                 payment_method_types=['card'],
-                setup_future_usage='off_session'  # 重要：将来の自動決済のために保存
+                setup_future_usage='off_session'
             )
             
             # customer_idを保存（これが重要な追加部分）
@@ -120,7 +120,7 @@ class StripeService:
         
         
     @staticmethod
-    def record_payment(email, plan, amount, payment_status, next_process_date, transaction_id=None, message=None):
+    def record_payment(email, plan, amount, next_process_date, transaction_id=None, message=None):
         """支払い情報をuser_paymentテーブルに記録"""
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -131,20 +131,18 @@ class StripeService:
                     email,
                     plan,
                     amount,
-                    payment_status,
                     next_process_date,
                     transaction_id,
                     message,
                     processed_by
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s, %s, %s
                 )
                 RETURNING id
             """, (
                 email,
                 plan,
                 amount,
-                payment_status,
                 next_process_date,
                 transaction_id,
                 message,

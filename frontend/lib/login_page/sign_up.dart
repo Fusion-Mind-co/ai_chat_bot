@@ -74,7 +74,6 @@ class _SignUpPageState extends State<SignUpPage> {
         'email': emailController.text,
         'username': usernameController.text,
         'password': passwordController.text,
-        'plan': 'Light', // デフォルトプラン
         'payment_status': false // 初期支払いステータス
       }),
     );

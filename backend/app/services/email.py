@@ -1,4 +1,4 @@
-# app/services/email.py
+# email.py
 import smtplib
 from email.mime.text import MIMEText
 from ..config import Config

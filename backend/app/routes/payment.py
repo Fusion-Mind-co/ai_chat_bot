@@ -168,7 +168,6 @@ def create_payment_intent():
                     email=email,
                     plan=plan,
                     amount=amount,
-                    payment_status=False,
                     next_process_date=datetime.now() + timedelta(minutes=1),
                     transaction_id=payment_intent_id,
                     message='支払い処理中'

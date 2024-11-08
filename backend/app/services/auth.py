@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from bcrypt import hashpw, gensalt, checkpw
 from ..database import execute_query
 from ..config import Config 
+import os
 
 class AuthService:
   
@@ -31,9 +32,9 @@ class AuthService:
         print(f"User data: {user}")  # デバッグ用
             
         # ロックアウトチェック
-        if user['login_attempts'] >= Config.MAX_LOGIN_ATTEMPTS:
+        if user['login_attempts'] >= int(os.getenv('MAX_LOGIN_ATTEMPTS')):
             if user['last_attempt_time']:
-                lockout_time = user['last_attempt_time'] + timedelta(minutes=Config.LOCKOUT_TIME)
+                lockout_time = user['last_attempt_time'] + timedelta(minutes=int(os.getenv('LOCKOUT_TIME')))
                 if datetime.now() < lockout_time:
                     return False, "アカウントがロックされました。メールをご確認ください。"
 
@@ -65,7 +66,7 @@ class AuthService:
             return False, "認証エラーが発生しました"
     
     @staticmethod
-    def signup(email, username, password, plan='basic'):
+    def signup(email, username, password, plan='Free'):
         """
         新規ユーザー登録
         """
@@ -75,13 +76,15 @@ class AuthService:
         query = """
             INSERT INTO user_account (
                 email, username, password_hash, plan, 
-                payment_status, monthly_cost, created_at, last_login
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                monthly_cost, created_at, last_login
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        params = (email, username, hashed_password, plan, False, 0.0, current_time, current_time)
+        params = (email, username, hashed_password, plan, 0.0, current_time, current_time)
         
         result = execute_query(query, params)
         return result is not None
+
+
     
     @staticmethod
     def unlock_account(email):
