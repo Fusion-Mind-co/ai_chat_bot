@@ -20,32 +20,49 @@ import 'package:sqflite/sqflite.dart';
 Future<void> main() async {
   print('main関数実行開始');
 
+  // Flutterエンジンを初期化
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 環境変数のロード
-  await dotenv.load(fileName: ".env");
-  print('環境変数ロード完了');
+  try {
+    // 環境変数のロード → globals.dart
+    await loadEnvironment(); // awaitを追加
+    print('環境変数ロード完了');
 
-  // データベースインスタンスの取得（DatabaseServiceで管理）
-  db = DatabaseService.getDatabaseInstance();
-
-  final publishableKey = dotenv.env['PUBLISHABLE_KEY'];
-  if (publishableKey == null || publishableKey.isEmpty) {
-    print('エラー: PUBLISHABLE_KEYが読み込めていません');
-  } else {
-    print('PUBLISHABLE_KEYの読み込み成功: $publishableKey');
-    try {
-      Stripe.publishableKey = publishableKey;
-      await Stripe.instance.applySettings();
-      print('Stripe設定の適用に成功しました');
-    } catch (e) {
-      print('Stripe設定の適用中にエラー: $e');
+    // データベース初期化を追加
+    if (kIsWeb) {
+      // ブラウザ版は現在未使用だが、コードは残しておく
+      print('ブラウザ版は現在サポートされていません');
+    } else {
+      // モバイル版のSQLite初期化
+      db = DatabaseService.getDatabaseInstance();
+      print('モバイル用のSQLiteが初期化されました');
     }
-  }
 
-  // アプリの起動
-  runApp(MyApp());
-  print('アプリ起動');
+    // Stripe設定
+    if (serverUrl.isEmpty) {
+      print('エラー: SERVER_URLが読み込めていません');
+    } else {
+      final publishableKey = dotenv.env['PUBLISHABLE_KEY'];
+      if (publishableKey == null || publishableKey.isEmpty) {
+        print('エラー: PUBLISHABLE_KEYが読み込めていません');
+      } else {
+        print('PUBLISHABLE_KEYの読み込み成功: $publishableKey');
+        try {
+          Stripe.publishableKey = publishableKey;
+          await Stripe.instance.applySettings();
+          print('Stripe設定の適用に成功しました');
+        } catch (e) {
+          print('Stripe設定の適用中にエラー: $e');
+        }
+      }
+    }
+
+    // アプリの起動
+    runApp(MyApp());
+    print('アプリ起動');
+  } catch (e) {
+    print('初期化中にエラーが発生: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -61,7 +78,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => App(),
         '/signup': (context) => SignUpPage(),
         '/forgot_password': (context) => ForgotPasswordPage(),
-        '/payment': (context) => PaymentPage(), // 修正：単純なルートとして追加
+        '/payment': (context) => PaymentPage(isInitialAccess: false),
       },
     );
   }

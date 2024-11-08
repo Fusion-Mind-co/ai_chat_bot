@@ -10,6 +10,10 @@ import 'package:flutter/material.dart' as material show Card;
 import 'package:intl/intl.dart'; // Materialの'Card'を別名でインポート
 
 class PaymentPage extends StatefulWidget {
+  final bool isInitialAccess; // 初回アクセスフラグを追加
+
+  PaymentPage({this.isInitialAccess = false}); // デフォルトはfalse
+
   @override
   PaymentPageState createState() => PaymentPageState();
 }
@@ -61,8 +65,7 @@ class PaymentPageState extends State<PaymentPage> {
     try {
       // 1. ユーザーの現在の状態を確認
       final userResponse = await http.get(
-        Uri.parse(
-            '${dotenv.env['NGROK_URL']}/get/user_status?email=$globalEmail'),
+        Uri.parse('$serverUrl/get/user_status?email=$globalEmail'),
       );
 
       if (userResponse.statusCode != 200) {
@@ -96,7 +99,7 @@ class PaymentPageState extends State<PaymentPage> {
 
     // 1. PaymentIntent作成
     final response = await http.post(
-      Uri.parse('${dotenv.env['NGROK_URL']}/create-payment-intent'),
+      Uri.parse('$serverUrl/create-payment-intent'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'amount': planDetails!['price'],
@@ -188,7 +191,7 @@ class PaymentPageState extends State<PaymentPage> {
     try {
       // 1. プラン変更予約
       final response = await http.post(
-        Uri.parse('${dotenv.env['NGROK_URL']}/reserve-plan-change'),
+        Uri.parse('$serverUrl/reserve-plan-change'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': globalEmail,
@@ -251,7 +254,7 @@ class PaymentPageState extends State<PaymentPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('${dotenv.env['NGROK_URL']}/reserve-cancellation'),
+        Uri.parse('$serverUrl/reserve-cancellation'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': globalEmail,
@@ -278,7 +281,7 @@ class PaymentPageState extends State<PaymentPage> {
 
   Future<void> _updateUserPlan(String plan, {String? processType}) async {
     final response = await http.post(
-      Uri.parse('${dotenv.env['NGROK_URL']}/update/plan'),
+      Uri.parse('$serverUrl/update/plan'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'email': globalEmail,
@@ -294,7 +297,7 @@ class PaymentPageState extends State<PaymentPage> {
 
   Future<void> _updatePaymentStatus(bool status) async {
     final response = await http.post(
-      Uri.parse('${dotenv.env['NGROK_URL']}/update/payment_status'),
+      Uri.parse('$serverUrl/update/payment_status'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'email': globalEmail,
@@ -332,8 +335,7 @@ class PaymentPageState extends State<PaymentPage> {
   Future<void> _fetchUserStatus() async {
     try {
       final response = await http.get(
-        Uri.parse(
-            '${dotenv.env['NGROK_URL']}/get/user_status?email=$globalEmail'),
+        Uri.parse('$serverUrl/get/user_status?email=$globalEmail'),
       );
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
@@ -449,6 +451,24 @@ class PaymentPageState extends State<PaymentPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    SizedBox(height: 8),
+       // ||=================初回アクセス時のみ表示=====================||
+                    if (widget.isInitialAccess)
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pushReplacementNamed(context, '/home');
+                          },
+                          child: Text(
+                            '無料プランで始める',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                      ),
+      // ||=================初回アクセス時のみ表示=====================||
                     SizedBox(height: 20),
                     ...plans.entries
                         .map((entry) => _buildPlanCard(
@@ -542,8 +562,7 @@ class PaymentPageState extends State<PaymentPage> {
               onPressed: () async {
                 try {
                   final response = await http.post(
-                    Uri.parse(
-                        '${dotenv.env['NGROK_URL']}/test/check-subscriptions'),
+                    Uri.parse('$serverUrl/test/check-subscriptions'),
                     headers: {'Content-Type': 'application/json'},
                   );
                   print('サブスクリプションチェックレスポンス: ${response.body}');

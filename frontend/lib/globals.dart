@@ -15,10 +15,14 @@ String globalSortOrder = 'created_at ASC';
 int chatHistoryMaxLength = 1000; // 初期値を設定
 int input_text_length = 200;
 
-// 環境ごとにサーバーURLを切り替える
+// サーバーURLを定義するグローバル変数
+String serverUrl = '';
 
-final String? serverUrl =
-    kIsWeb ? 'http://localhost:5000' : dotenv.env['NGROK_URL'];
+// .envファイルの読み込みとサーバーURLの設定
+Future<void> loadEnvironment() async {
+  await dotenv.load();
+  serverUrl = dotenv.env['SERVER_URL'] ?? 'http://localhost:5000'; // 開発用URL（デフォルト）
+}
 
 // グローバルに管理するデータベースインターフェース
 late DatabaseInterface db;

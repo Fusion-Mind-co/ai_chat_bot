@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:chatbot/globals.dart';
 import 'payment_page.dart'; // PaymentPageのインポート
@@ -39,56 +40,95 @@ class _SignUpPageState extends State<SignUpPage> {
   // sign_up.dartの修正版
 
   Future<void> signup() async {
-    if (!isEmailValid || !isPasswordValid) {
+    try {
+      if (!isEmailValid || !isPasswordValid) {
+        setState(() {
+          errorMessage = "入力エラーがあります。";
+        });
+        return;
+      }
+
+      // メールアドレスの重複チェック
+      final checkEmailUrl = Uri.parse('$serverUrl/check_email');
+      print('チェックするURL: $checkEmailUrl'); // URLを確認するためのログ
+
+      final checkResponse = await http.post(
+        checkEmailUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': emailController.text,
+        }),
+      );
+
+      print('サーバーレスポンス: ${checkResponse.statusCode}'); // ステータスコードの確認
+      print('レスポンスボディ: ${checkResponse.body}'); // レスポンスの中身を確認
+
+      // メールのチェック処理の結果を確認
+      if (checkResponse.statusCode != 200) {
+        setState(() {
+          try {
+            final Map<String, dynamic> responseData =
+                json.decode(checkResponse.body);
+            errorMessage = responseData['message'];
+          } catch (e) {
+            errorMessage = "サーバーとの通信に失敗しました。";
+            print('エラーの詳細: $e');
+          }
+        });
+        return;
+      }
+
+      // アカウント登録処理
+      final signupUrl = Uri.parse('$serverUrl/signup');
+      print('サインアップURL: $signupUrl'); // URLを確認するためのログ
+
+      final signupResponse = await http.post(
+        signupUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': emailController.text,
+          'username': usernameController.text,
+          'password': passwordController.text,
+          'plan': 'Free', // デフォルトプランを追加
+        }),
+      );
+
+      print('サインアップレスポンス: ${signupResponse.statusCode}');
+      print('サインアップレスポンスボディ: ${signupResponse.body}');
+
+      if (signupResponse.statusCode == 200) {
+        // グローバル変数を更新
+        globalEmail = emailController.text;
+        // 登録成功後、初回フラグをtrueにして支払いページに遷移
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentPage(isInitialAccess: true),
+          ),
+        );
+      } else {
+        setState(() {
+          try {
+            final Map<String, dynamic> responseData =
+                json.decode(signupResponse.body);
+            errorMessage = responseData['message'];
+          } catch (e) {
+            errorMessage = "アカウント登録に失敗しました。";
+            print('エラーの詳細: $e');
+          }
+        });
+      }
+    } catch (e) {
+      print('予期せぬエラー: $e');
       setState(() {
-        errorMessage = "入力エラーがあります。";
+        errorMessage = "予期せぬエラーが発生しました。";
       });
-      return;
-    }
-
-    // まずメールアドレスの重複チェック
-    final checkEmailUrl = Uri.parse('$serverUrl/check_email');
-    final checkResponse = await http.post(
-      checkEmailUrl,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'email': emailController.text,
-      }),
-    );
-
-    if (checkResponse.statusCode != 200) {
-      setState(() {
-        final Map<String, dynamic> responseData =
-            json.decode(checkResponse.body);
-        errorMessage = responseData['message'];
-      });
-      return;
-    }
-
-    // アカウント登録処理
-    final signupUrl = Uri.parse('$serverUrl/signup');
-    final signupResponse = await http.post(
-      signupUrl,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'email': emailController.text,
-        'username': usernameController.text,
-        'password': passwordController.text,
-        'payment_status': false // 初期支払いステータス
-      }),
-    );
-
-    if (signupResponse.statusCode == 200) {
-      // グローバル変数を更新
-      globalEmail = emailController.text;
-
-      // 登録成功後、支払いページに遷移
-      Navigator.pushNamed(context, '/payment');
     }
   }
 
   // メールアドレスの検証関数
   bool validateEmail(String email) {
+    print('メールアドレスの検証');
     String pattern = r'^[^@]+@[^@]+\.[^@]+$';
     RegExp regex = RegExp(pattern);
     return regex.hasMatch(email) && email.length <= 255;
@@ -96,6 +136,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   // パスワードの検証関数
   bool validatePassword(String password) {
+    print('パスワードの検証');
     if (password.length < 8 || password.length > 16) {
       return false;
     }
@@ -175,7 +216,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ElevatedButton(
                 onPressed: signup,
-                child: Text('次へ'),
+                child: Text('登録'),
               ),
             ],
           ),

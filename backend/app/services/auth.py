@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from bcrypt import hashpw, gensalt, checkpw
 from ..database import execute_query
 from ..config import Config 
+from ..database import get_db_connection
 import os
 
 class AuthService:
@@ -66,24 +67,48 @@ class AuthService:
             return False, "認証エラーが発生しました"
     
     @staticmethod
-    def signup(email, username, password, plan='Free'):
-        """
-        新規ユーザー登録
-        """
-        hashed_password = hashpw(password.encode('utf-8'), gensalt()).decode('utf-8')
-        current_time = datetime.now()
-        
-        query = """
-            INSERT INTO user_account (
-                email, username, password_hash, plan, 
-                monthly_cost, created_at, last_login
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-        params = (email, username, hashed_password, plan, 0.0, current_time, current_time)
-        
-        result = execute_query(query, params)
-        return result is not None
+    def signup(email: str, username: str, password: str, plan: str = 'Free') -> tuple[bool, str]:
+        try:
+            # 1. パスワードのハッシュ化
+            hashed_password = hashpw(password.encode('utf-8'), gensalt()).decode('utf-8')
+            current_time = datetime.now()
+            process_interval = Config.get_next_process_interval()
 
+            # 2. ユーザー作成のトランザクション
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            try:
+                cursor.execute("BEGIN")
+                
+                # ユーザー基本情報の登録
+                cursor.execute("""
+                    INSERT INTO user_account (
+                        email, username, password_hash, plan,
+                        monthly_cost, created_at, last_login,
+                        next_process_date, next_process_type
+                    ) VALUES (
+                        %s, %s, %s, %s,
+                        0.0, %s, %s,
+                        NOW() + INTERVAL %s, 'payment'
+                    )
+                """, (email, username, hashed_password, plan,
+                    current_time, current_time, process_interval))
+
+                cursor.execute("COMMIT")
+                return True, "アカウント作成成功"
+
+            except Exception as e:
+                cursor.execute("ROLLBACK")
+                raise e
+
+            finally:
+                cursor.close()
+                conn.close()
+
+        except Exception as e:
+            print(f"Signup service error: {e}")
+            return False, str(e)
 
     
     @staticmethod

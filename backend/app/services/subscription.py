@@ -157,22 +157,59 @@ class SubscriptionService:
         for user in payment_users:
             print(f"\n定期支払い処理: {user['email']} ({user['plan']})")
 
-            plan_details = Config.SUBSCRIPTION_PLANS.get(user['plan'])
-            if not plan_details:
-                print(f"エラー: 無効なプラン {user['plan']}")
-                continue
-
-            amount = plan_details['price']
-            print(f"請求金額: ¥{amount}")
-
             try:
+                # Freeプランの場合は特別処理
+                if user['plan'] == 'Free':
+                    # コストリセットと次回処理日の更新のみ
+                    cursor.execute("""
+                        UPDATE user_account 
+                        SET 
+                            monthly_cost = 0,
+                            next_process_date = NOW() + INTERVAL %s,
+                            next_process_type = 'payment'
+                        WHERE email = %s
+                    """, (Config.get_next_process_interval(), user['email']))
+                    
+                    # 処理記録
+                    SubscriptionService.create_payment_record(
+                        cursor, 
+                        user['email'], 
+                        'Free', 
+                        0, 
+                        'auto_free_reset', 
+                        message='Freeプランリセット'
+                    )
+                    
+                    conn.commit()
+                    continue  # 次のユーザーへ
+
+                # 有料プランの通常処理
+                plan_details = Config.SUBSCRIPTION_PLANS.get(user['plan'])
+                if not plan_details:
+                    print(f"エラー: 無効なプラン {user['plan']}")
+                    continue
+
+                amount = plan_details['price']
+                print(f"請求金額: ¥{amount}")
+
+                # 支払い処理
                 success, transaction_id, error_message = StripeService.process_subscription_payment(
                     user['email'],
                     amount
                 )
 
-                SubscriptionService.create_payment_record(cursor, user['email'], user['plan'], amount, 'auto_subscription', transaction_id, '定期支払い' if success else error_message)
+                # 支払い記録の作成
+                SubscriptionService.create_payment_record(
+                    cursor, 
+                    user['email'], 
+                    user['plan'], 
+                    amount, 
+                    'auto_subscription', 
+                    transaction_id, 
+                    '定期支払い' if success else error_message
+                )
 
+                # 次回処理日の更新
                 if success:
                     SubscriptionService.update_next_process(cursor, user['email'], 'payment', Config.get_next_process_interval())
                 else:
@@ -182,6 +219,8 @@ class SubscriptionService:
             except Exception as e:
                 print(f"支払い処理エラー: {e}")
                 conn.rollback()
+
+
 
     # 支払い記録を作成する共通関数
     @staticmethod
