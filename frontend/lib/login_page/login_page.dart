@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:chatbot/chat_page/api/api_config.dart';
 import 'package:chatbot/globals.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -24,12 +25,51 @@ class _LoginPageState extends State<LoginPage> {
   // 差分の時間のリミット（例：7日）
   // final Duration loginExpirationLimit = Duration(days: 1);
   // 差分の時間のリミット 分　【デバッグ用】
-  final Duration loginExpirationLimit = Duration(minutes : time_value);
+  final Duration loginExpirationLimit = Duration(minutes: time_value);
+
+  // Googleログイン
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
 
   @override
   void initState() {
     super.initState();
     _loadRememberedCredentials(); // 初期化時に記憶された情報を読み込む
+  }
+
+  // Googleログイン処理
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // バックエンドにGoogleトークンを送信
+      final response = await http.post(
+        Uri.parse('$serverUrl/google-login'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'token': googleAuth.idToken,
+          'email': googleUser.email,
+          'name': googleUser.displayName,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // グローバル変数を更新
+        globalEmail = googleUser.email;
+        Navigator.pushNamed(context, '/home');
+      } else {
+        throw Exception('Google認証に失敗しました');
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Googleログインに失敗しました: $e';
+      });
+    }
   }
 
   // <<<<<ローカルデータ>>>>>
@@ -229,6 +269,42 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: login,
                 child: Text('ログイン'),
               ),
+
+              // 区切り線
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text('または'),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+
+              // Googleログインボタン
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _handleGoogleSignIn,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 50),
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/google_logo.png', // Googleのロゴ画像
+                      height: 24,
+                    ),
+                    SizedBox(width: 12),
+                    Text('Googleでログイン'),
+                  ],
+                ),
+              ),
+
               SizedBox(height: 35),
               TextButton(
                 onPressed: () {
