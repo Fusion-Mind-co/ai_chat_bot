@@ -36,25 +36,11 @@ class PaymentPageState extends State<PaymentPage> {
   String? selectedPlan;
 
   final Map<String, Map<String, dynamic>> plans = {
-    'Light': {
-      'price': 980,
-      'points': Light_max_monthly_cost.toInt(),
-      'description': 'お試し利用プラン',
-    },
     'Standard': {
-      'price': 1980,
-      'points': Standard_max_monthly_cost.toInt(),
-      'description': '標準利用プラン',
-    },
-    'Pro': {
-      'price': 2980,
-      'points': Pro_max_monthly_cost.toInt(),
-      'description': '高機能利用プラン',
-    },
-    'Expert': {
-      'price': 3980,
-      'points': Expert_max_monthly_cost.toInt(),
-      'description': 'プロフェッショナルプラン',
+      'price': planPrices['Standard'],
+      // コスト　これは廃止予定
+      'points': Standard_max_monthly_cost.toInt(), 
+      'description': 'ChatGPT 4o 使い放題プラン',
     },
   };
 
@@ -63,26 +49,10 @@ class PaymentPageState extends State<PaymentPage> {
     print('選択プラン: $plan');
 
     try {
-      // 1. ユーザーの現在の状態を確認
-      final userResponse = await http.get(
-        Uri.parse('$serverUrl/get/user_status?email=$globalEmail'),
-      );
 
-      if (userResponse.statusCode != 200) {
-        throw Exception('ユーザー情報の取得に失敗しました');
-      }
-
-      final userData = jsonDecode(userResponse.body);
-      final currentPlan = userData['plan'];
-      final paymentStatus = userData['payment_status'];
-
-      if (!paymentStatus || currentPlan == null) {
-        // 2a. 初期決済の場合
-        await _handleInitialPayment(plan);
-      } else {
-        // 2b. プラン変更の場合
-        await _handlePlanChange(plan);
-      }
+      // 初期決済処理
+      await _handleInitialPayment(plan);
+    
     } catch (e) {
       print('エラー発生:');
       print('  タイプ: ${e.runtimeType}');
@@ -117,11 +87,6 @@ class PaymentPageState extends State<PaymentPage> {
     final paymentIntentData = jsonDecode(response.body);
     await _processPayment(paymentIntentData);
 
-    // 3. データベース更新
-    await _updateUserPlan(plan,
-        processType: 'payment' // 'paymentInterval' から 'processType' に変更
-        );
-    await _updatePaymentStatus(true);
   }
 
   // _processPaymentメソッドを追加
@@ -144,86 +109,7 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  // プラン変更処理
-  // プラン変更処理を修正
-  Future<void> _handlePlanChange(String newPlan) async {
-    // 確認ダイアログを表示
-    final currentAmount = planPrices[globalPlan] ?? 0;
-    final newAmount = planPrices[newPlan] ?? 0;
-
-    bool confirm = await showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text('プラン変更の確認'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('以下の内容でプラン変更を予約します：'),
-                  SizedBox(height: 8),
-                  Text('現在のプラン：$globalPlan (¥$currentAmount/月)'),
-                  Text('変更後のプラン：$newPlan (¥$newAmount/月)'),
-                  SizedBox(height: 8),
-                  Text('※ 次回支払い時にプランが変更されます。'),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  child: Text('キャンセル'),
-                  onPressed: () => Navigator.of(context).pop(false),
-                ),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.blue,
-                  ),
-                  child: Text('変更する'),
-                  onPressed: () => Navigator.of(context).pop(true),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
-
-    if (!confirm) return;
-
-    try {
-      // 1. プラン変更予約
-      final response = await http.post(
-        Uri.parse('$serverUrl/reserve-plan-change'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': globalEmail,
-          'new_plan': newPlan,
-          'process_type': 'plan_change'
-        }),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('プラン変更の予約に失敗しました');
-      }
-
-      // 2. 状態を更新 (ここを追加)
-      await _fetchUserStatus();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('次回決済時にプランが変更されます')),
-      );
-    } catch (e) {
-      print('エラー発生:');
-      print('  タイプ: ${e.runtimeType}');
-      print('  メッセージ: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('エラーが発生しました: $e')),
-      );
-    }
-  }
-
-  // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝20241105＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
-// 解約ロジック
-
-// payment_page.dart に以下のメソッドを追加
+  // 解約処理
   Future<void> _handleCancellation() async {
     // 確認ダイアログを表示
     bool confirm = await showDialog(
@@ -252,6 +138,8 @@ class PaymentPageState extends State<PaymentPage> {
 
     if (!confirm) return;
 
+    // 解約に必要なテーブルデータを渡す
+
     try {
       final response = await http.post(
         Uri.parse('$serverUrl/reserve-cancellation'),
@@ -279,6 +167,7 @@ class PaymentPageState extends State<PaymentPage> {
 
   // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
 
+  // 
   Future<void> _updateUserPlan(String plan, {String? processType}) async {
     final response = await http.post(
       Uri.parse('$serverUrl/update/plan'),
@@ -445,14 +334,14 @@ class PaymentPageState extends State<PaymentPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '最適なプランを設定',
+                      'プランを設定',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     SizedBox(height: 8),
-       // ||=================初回アクセス時のみ表示=====================||
+                    // ||=================初回アクセス時のみ表示=====================||
                     if (widget.isInitialAccess)
                       Center(
                         child: TextButton(
@@ -468,7 +357,7 @@ class PaymentPageState extends State<PaymentPage> {
                           ),
                         ),
                       ),
-      // ||=================初回アクセス時のみ表示=====================||
+                    // ||=================初回アクセス時のみ表示=====================||
                     SizedBox(height: 20),
                     ...plans.entries
                         .map((entry) => _buildPlanCard(
@@ -510,36 +399,19 @@ class PaymentPageState extends State<PaymentPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  plan,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '¥$price/月',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
             Text(
               description,
               style: TextStyle(
-                color: Colors.grey.shade600, // Colors.grey[600]を修正
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            SizedBox(height: 8),
             Text(
-              '$points ポイント/月',
+              '¥$price/月',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: 16),
@@ -552,36 +424,11 @@ class PaymentPageState extends State<PaymentPage> {
                   padding: EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: Text(
-                  isCurrentPlan ? '現在のプラン' : 'プランを選択',
+                  '申し込む',
                   style: TextStyle(fontSize: 16),
                 ),
               ),
             ),
-            // テスト用ボタンを追加
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  final response = await http.post(
-                    Uri.parse('$serverUrl/test/check-subscriptions'),
-                    headers: {'Content-Type': 'application/json'},
-                  );
-                  print('サブスクリプションチェックレスポンス: ${response.body}');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('サブスクリプションチェック実行完了')),
-                  );
-                } catch (e) {
-                  print('チェックエラー: $e');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('チェック実行エラー: $e')),
-                  );
-                }
-              },
-              child: Text('サブスクリプションチェック実行（テスト用）'),
-            ),
-
-            // デバッグ情報表示
-            Text('現在のプラン: $globalPlan'),
-            Text('次回支払日: [DBから取得]'), // この部分は実装が必要
           ],
         ),
       ),

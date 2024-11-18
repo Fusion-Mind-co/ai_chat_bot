@@ -22,6 +22,7 @@ String serverUrl = '';
 Future<void> loadEnvironment() async {
   await dotenv.load();
   serverUrl = dotenv.env['SERVER_URL'] ?? 'http://localhost:5000'; // 開発用URL（デフォルト）
+  print('serverUrl = $serverUrl');
 }
 
 // グローバルに管理するデータベースインターフェース
@@ -30,10 +31,7 @@ late DatabaseInterface db;
 //プラン
 Map<String, int> planPrices = {
   'Free': 0,
-  'Light': 980,
-  'Standard': 1980,
-  'Pro': 2980,
-  'Expert': 3980,
+  'Standard': 1950,
 };
 
 //契約内容

@@ -84,16 +84,33 @@ class AuthService:
                 # ユーザー基本情報の登録
                 cursor.execute("""
                     INSERT INTO user_account (
-                        email, username, password_hash, plan,
-                        monthly_cost, created_at, last_login,
-                        next_process_date, next_process_type
+                        email, 
+                        username,
+                        password_hash, 
+                        plan,
+                        monthly_cost, 
+                        created_at, 
+                        last_login,
+                        next_process_date, 
+                        next_process_type
                     ) VALUES (
-                        %s, %s, %s, %s,
-                        0.0, %s, %s,
-                        NOW() + INTERVAL %s, 'payment'
+                        %s, 
+                        %s, 
+                        %s, 
+                        %s,
+                        0.0, 
+                        %s, 
+                        %s,
+                        NOW() + INTERVAL %s, 
+                        'payment'
                     )
-                """, (email, username, hashed_password, plan,
-                    current_time, current_time, process_interval))
+                """, (email, 
+                    username, 
+                    hashed_password, 
+                    plan,
+                    current_time, 
+                    current_time, 
+                    process_interval))
 
                 cursor.execute("COMMIT")
                 return True, "アカウント作成成功"

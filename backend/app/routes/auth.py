@@ -100,6 +100,7 @@ def _validate_signup_data(data):
 
 @bp.route('/reset_password_request', methods=['POST'])
 def reset_password_request():
+    print('def reset_password_request')
     data = request.json
     email = data.get('email')
     
