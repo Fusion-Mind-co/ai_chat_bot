@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:chatbot/chat_page/api/api_config.dart';
 import 'package:chatbot/globals.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:chatbot/services/google_auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -22,15 +24,10 @@ class _LoginPageState extends State<LoginPage> {
   bool isPasswordObscured = true; // パスワードの表示/非表示を管理する変数
   bool rememberMe = false; // Remember Me の状態を管理
 
-  // 差分の時間のリミット（例：7日）
-  // final Duration loginExpirationLimit = Duration(days: 1);
-  // 差分の時間のリミット 分　【デバッグ用】
   final Duration loginExpirationLimit = Duration(minutes: time_value);
 
   // Googleログイン
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-  );
+  final GoogleAuthService _googleAuthService = GoogleAuthService();
 
   @override
   void initState() {
@@ -39,37 +36,49 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   // Googleログイン処理
+
   Future<void> _handleGoogleSignIn() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      // バックエンドにGoogleトークンを送信
-      final response = await http.post(
-        Uri.parse('$serverUrl/google-login'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'token': googleAuth.idToken,
-          'email': googleUser.email,
-          'name': googleUser.displayName,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        // グローバル変数を更新
-        globalEmail = googleUser.email;
-        Navigator.pushNamed(context, '/home');
+      final success = await _googleAuthService.signInWithGoogle();
+      if (success) {
+        Navigator.pushReplacementNamed(context, '/home');
       } else {
-        throw Exception('Google認証に失敗しました');
+        setState(() {
+          errorMessage = 'Googleログインに失敗しました';
+        });
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'Googleログインに失敗しました: $e';
+        errorMessage = 'エラーが発生しました: $e';
       });
     }
+  }
+
+  // Googleログインボタンの追加
+  Widget _buildGoogleSignInButton() {
+    return ElevatedButton(
+      onPressed: _handleGoogleSignIn,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        minimumSize: Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            'assets/google_logo.png',
+            height: 24,
+          ),
+          SizedBox(width: 12),
+          Text('Googleでログイン'),
+        ],
+      ),
+    );
   }
 
   // <<<<<ローカルデータ>>>>>
@@ -269,8 +278,10 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: login,
                 child: Text('ログイン'),
               ),
+              SizedBox(height: 16),
+              // Googleログインボタン
+              _buildGoogleSignInButton(),
 
-              // 区切り線
               SizedBox(height: 20),
               Row(
                 children: [
@@ -281,28 +292,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   Expanded(child: Divider()),
                 ],
-              ),
-
-              // Googleログインボタン
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _handleGoogleSignIn,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(double.infinity, 50),
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/google_logo.png', // Googleのロゴ画像
-                      height: 24,
-                    ),
-                    SizedBox(width: 12),
-                    Text('Googleでログイン'),
-                  ],
-                ),
               ),
 
               SizedBox(height: 35),

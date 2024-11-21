@@ -13,6 +13,45 @@ bp = Blueprint('auth', __name__)
 # シリアライザーの初期化
 s = URLSafeTimedSerializer(Config.SECRET_KEY)
 
+# google_login認証
+@bp.route('/google-login', methods=['POST'])
+def google_login():
+    """Googleログインエンドポイント"""
+    try:
+        print("Received Google login request")  # デバッグログ追加
+        data = request.json
+        print(f"Request data: {data}")  # デバッグログ追加
+        
+        token = data.get('token')
+        if not token:
+            print("No token provided")  # デバッグログ追加
+            return jsonify({"message": "トークンが必要です"}), 400
+            
+        # トークンの検証とユーザー情報の取得
+        try:
+            print("Verifying token...")  # デバッグログ追加
+            google_user = AuthService.verify_google_token(token)
+            print(f"Google user info: {google_user}")  # デバッグログ追加
+        except Exception as e:
+            print(f"Token verification error: {e}")  # デバッグログ追加
+            return jsonify({"message": f"無効なトークンです: {str(e)}"}), 401
+            
+        # ログイン処理
+        success, message = AuthService.handle_google_login(google_user)
+        print(f"Login result: success={success}, message={message}")  # デバッグログ追加
+        
+        if success:
+            return jsonify({
+                "message": message,
+                "email": google_user.get('email')
+            }), 200
+        else:
+            return jsonify({"message": message}), 400
+            
+    except Exception as e:
+        print(f"Google login error: {e}")  # デバッグログ追加
+        return jsonify({"message": f"サーバーエラーが発生しました: {str(e)}"}), 500
+
 @bp.route('/login', methods=['POST'])
 def login():
     try:

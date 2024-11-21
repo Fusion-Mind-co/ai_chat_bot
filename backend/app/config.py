@@ -8,6 +8,14 @@ load_dotenv()
 class Config:
 
 
+    # Google OAuth設定
+    GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+    
+    @staticmethod
+    def init_google_auth():
+        if not Config.GOOGLE_CLIENT_ID:
+            raise ValueError("GOOGLE_CLIENT_ID is not set")
+
     INTERVALS = {
             'production': {
                 'scheduler': 1,      # スケジューラーの実行間隔（分）
