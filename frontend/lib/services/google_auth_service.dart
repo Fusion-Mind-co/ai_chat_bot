@@ -14,11 +14,8 @@ class GoogleAuthService {
   Future<bool> signInWithGoogle() async {
     try {
       print('Starting Google Sign In...');
-
-      // 既存のサインインを明示的にサインアウト
       await _googleSignIn.signOut();
 
-      // 新規サインイン
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         print('User cancelled sign in');
@@ -29,7 +26,6 @@ class GoogleAuthService {
           await googleUser.authentication;
       print('Authentication successful');
 
-      // バックエンド(Flask)に認証情報を送信
       final response = await http.post(
         Uri.parse('$serverUrl/google-login'),
         headers: {'Content-Type': 'application/json'},
@@ -40,12 +36,11 @@ class GoogleAuthService {
         }),
       );
 
-      print('Backend response status: ${response.statusCode}');
-      print('Backend response body: ${response.body}');
-
       if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
         globalEmail = googleUser.email;
         await _loadUserConfig(googleUser.email);
+        print('Login message: ${responseData['message']}'); // デバッグ用
         return true;
       }
 
@@ -56,7 +51,7 @@ class GoogleAuthService {
     }
   }
 
-  // ユーザー設定を取得する関数を分離
+  // ユーザー設定を取得
   Future<void> _loadUserConfig(String email) async {
     try {
       final response = await http.get(

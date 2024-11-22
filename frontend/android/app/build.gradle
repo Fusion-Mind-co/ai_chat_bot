@@ -29,9 +29,13 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // GOOGLE_CLIENT_IDを.envから取得
+        def envVars = new Properties()
+        file("../../.env").withInputStream { envVars.load(it) }
+        
         manifestPlaceholders += [
-            'GOOGLE_CLIENT_ID': '373188674894-vtch5su8ptc6idtt47asp30d60p17qj8.apps.googleusercontent.com',
-            'applicationName': 'android.app.Application'
+            'GOOGLE_CLIENT_ID': envVars.getProperty('GOOGLE_CLIENT_ID', ''),
         ]
     }
 

@@ -18,11 +18,9 @@ s = URLSafeTimedSerializer(Config.SECRET_KEY)
 def google_login():
     try:
         data = request.json
-        print(f"Received data: {data}")  # デバッグ出力
+        print(f"Received data: {data}")
         
-        # アクセストークンを使用
         if 'access_token' in data:
-            # アクセストークンでの認証処理
             email = data.get('email')
             name = data.get('name', '')
             
@@ -32,13 +30,12 @@ def google_login():
             try:
                 cursor.execute("BEGIN")
                 
-                # 既存ユーザー確認
                 cursor.execute("""
                     SELECT * FROM user_account WHERE email = %s
                 """, (email,))
                 
                 user = cursor.fetchone()
-                print(f"Found user: {user}")  # デバッグ出力
+                print(f"Found user: {user}")
                 
                 if not user:
                     # 新規ユーザー作成
@@ -55,24 +52,40 @@ def google_login():
                     """, (email, name))
                     
                     new_user = cursor.fetchone()
-                    print(f"Created new user: {new_user}")  # デバッグ出力
+                    print(f"Created new user: {new_user}")
+                    message = "アカウントを新規作成しました"
+                else:
+                    message = "ログインしました"
                 
                 cursor.execute("COMMIT")
-                return jsonify({"message": "ログイン成功", "email": email}), 200
+                return jsonify({
+                    "success": True,
+                    "message": message,
+                    "email": email
+                }), 200
                 
             except Exception as e:
                 cursor.execute("ROLLBACK")
-                print(f"Database error: {e}")  # デバッグ出力
-                raise
+                print(f"Database error: {e}")
+                return jsonify({
+                    "success": False,
+                    "message": "データベースエラーが発生しました"
+                }), 500
             finally:
                 cursor.close()
                 conn.close()
         
-        return jsonify({"message": "Invalid token"}), 400
+        return jsonify({
+            "success": False,
+            "message": "認証情報が無効です"
+        }), 400
         
     except Exception as e:
-        print(f"Login error: {e}")  # デバッグ出力
-        return jsonify({"message": str(e)}), 500
+        print(f"Login error: {e}")
+        return jsonify({
+            "success": False,
+            "message": "サーバーエラーが発生しました"
+        }), 500
 
 @bp.route('/login', methods=['POST'])
 def login():

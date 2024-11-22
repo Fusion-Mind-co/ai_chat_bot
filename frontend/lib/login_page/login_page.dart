@@ -40,23 +40,49 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleGoogleSignIn() async {
     try {
       setState(() {
-        errorMessage = null; // エラーメッセージをクリア
+        errorMessage = null;
       });
 
       final success = await _googleAuthService.signInWithGoogle();
 
       if (success) {
+        // SnackBarでメッセージを表示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ログインしました'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
         print('Google sign in successful, navigating to home');
+
+        // 少し遅延を入れてSnackBarを表示する時間を確保
+        await Future.delayed(Duration(milliseconds: 500));
+
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         setState(() {
           errorMessage = 'Googleログインに失敗しました';
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Googleログインに失敗しました'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e) {
       setState(() {
         errorMessage = 'エラーが発生しました: $e';
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('エラーが発生しました'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
       print('Google sign in error: $e');
     }
   }
