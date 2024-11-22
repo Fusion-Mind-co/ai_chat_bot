@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify
 from ..services.user import UserService
 from ..services.tokenizer import TokenizerService
+from ..database import execute_query
 
 bp = Blueprint('user', __name__)
 
@@ -34,17 +35,39 @@ def update_field(field):
         return jsonify({"message": f"{field} updated successfully"}), 200
     return jsonify({"message": f"Failed to update {field}"}), 500
 
+
 @bp.route('/get/config_and_cost', methods=['GET'])
 def get_config_and_cost():
-    email = request.args.get('email')
-    if not email:
-        return jsonify({"message": "Email is required"}), 400
+    try:
+        email = request.args.get('email')
+        if not email:
+            return jsonify({"message": "メールアドレスが必要です"}), 400
 
-    config = UserService.get_user_config(email)
-    if config:
-        return jsonify(config), 200
-    return jsonify({"message": "User not found"}), 404
+        query = """
+            SELECT plan, monthly_cost, chat_history_max_length, input_text_length
+            FROM user_account
+            WHERE email = %s
+        """
+        result = execute_query(query, (email,))
+        print(f"Config query result for {email}: {result}")  # デバッグログ追加
+        
+        if not result:
+            # ユーザーが存在しない場合はデフォルト値を返す
+            default_config = {
+                "plan": "Free",
+                "monthly_cost": 0,
+                "chat_history_max_length": 1000,
+                "input_text_length": 200
+            }
+            return jsonify(default_config), 200
 
+        user_data = result[0]
+        return jsonify(user_data), 200
+
+    except Exception as e:
+        print(f"Error getting config and cost: {e}")
+        return jsonify({"message": "サーバーエラーが発生しました"}), 500
+    
 @bp.route('/tokenize', methods=['POST'])
 def tokenize():
     data = request.json

@@ -16,41 +16,63 @@ s = URLSafeTimedSerializer(Config.SECRET_KEY)
 # google_login認証
 @bp.route('/google-login', methods=['POST'])
 def google_login():
-    """Googleログインエンドポイント"""
     try:
-        print("Received Google login request")  # デバッグログ追加
         data = request.json
-        print(f"Request data: {data}")  # デバッグログ追加
+        print(f"Received data: {data}")  # デバッグ出力
         
-        token = data.get('token')
-        if not token:
-            print("No token provided")  # デバッグログ追加
-            return jsonify({"message": "トークンが必要です"}), 400
+        # アクセストークンを使用
+        if 'access_token' in data:
+            # アクセストークンでの認証処理
+            email = data.get('email')
+            name = data.get('name', '')
             
-        # トークンの検証とユーザー情報の取得
-        try:
-            print("Verifying token...")  # デバッグログ追加
-            google_user = AuthService.verify_google_token(token)
-            print(f"Google user info: {google_user}")  # デバッグログ追加
-        except Exception as e:
-            print(f"Token verification error: {e}")  # デバッグログ追加
-            return jsonify({"message": f"無効なトークンです: {str(e)}"}), 401
+            conn = get_db_connection()
+            cursor = conn.cursor()
             
-        # ログイン処理
-        success, message = AuthService.handle_google_login(google_user)
-        print(f"Login result: success={success}, message={message}")  # デバッグログ追加
+            try:
+                cursor.execute("BEGIN")
+                
+                # 既存ユーザー確認
+                cursor.execute("""
+                    SELECT * FROM user_account WHERE email = %s
+                """, (email,))
+                
+                user = cursor.fetchone()
+                print(f"Found user: {user}")  # デバッグ出力
+                
+                if not user:
+                    # 新規ユーザー作成
+                    cursor.execute("""
+                        INSERT INTO user_account (
+                            email, username, plan, created_at, last_login,
+                            next_process_date, next_process_type, monthly_cost,
+                            chat_history_max_length, input_text_length, sortorder
+                        ) VALUES (
+                            %s, %s, 'Free', NOW(), NOW(),
+                            NOW() + INTERVAL '1 month', 'payment',
+                            0, 1000, 200, 'created_at ASC'
+                        ) RETURNING *
+                    """, (email, name))
+                    
+                    new_user = cursor.fetchone()
+                    print(f"Created new user: {new_user}")  # デバッグ出力
+                
+                cursor.execute("COMMIT")
+                return jsonify({"message": "ログイン成功", "email": email}), 200
+                
+            except Exception as e:
+                cursor.execute("ROLLBACK")
+                print(f"Database error: {e}")  # デバッグ出力
+                raise
+            finally:
+                cursor.close()
+                conn.close()
         
-        if success:
-            return jsonify({
-                "message": message,
-                "email": google_user.get('email')
-            }), 200
-        else:
-            return jsonify({"message": message}), 400
-            
+        return jsonify({"message": "Invalid token"}), 400
+        
     except Exception as e:
-        print(f"Google login error: {e}")  # デバッグログ追加
-        return jsonify({"message": f"サーバーエラーが発生しました: {str(e)}"}), 500
+        print(f"Login error: {e}")  # デバッグ出力
+        return jsonify({"message": str(e)}), 500
 
 @bp.route('/login', methods=['POST'])
 def login():

@@ -39,9 +39,14 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleGoogleSignIn() async {
     try {
+      setState(() {
+        errorMessage = null; // エラーメッセージをクリア
+      });
 
       final success = await _googleAuthService.signInWithGoogle();
+
       if (success) {
+        print('Google sign in successful, navigating to home');
         Navigator.pushReplacementNamed(context, '/home');
       } else {
         setState(() {
@@ -52,6 +57,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(() {
         errorMessage = 'エラーが発生しました: $e';
       });
+      print('Google sign in error: $e');
     }
   }
 
