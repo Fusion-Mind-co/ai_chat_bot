@@ -14,6 +14,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   String? message;
 
   Future<void> sendResetLink() async {
+    print('Future<void> sendResetLink()');
     final url = Uri.parse('$serverUrl/reset_password_request');
     final response = await http.post(
       url,

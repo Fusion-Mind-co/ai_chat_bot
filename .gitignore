@@ -50,3 +50,6 @@ app.*.map.json
 
 # Android APKファイル
 *.apk
+
+# スキーマファイル
+ai_chat_app_test.sql

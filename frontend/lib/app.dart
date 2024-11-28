@@ -1,6 +1,7 @@
 // app.dart
 
 import 'dart:convert';
+import 'package:chatbot/services/google_auth_service.dart';
 import 'package:http/http.dart' as http; // httpパッケージのインポート
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -23,6 +24,8 @@ class App extends StatefulWidget {
 
 class AppState extends State<App> {
   bool _isDarkMode = false;
+
+  final GoogleAuthService _googleAuthService = GoogleAuthService();
 
   final storage = FlutterSecureStorage(); // 安全なストレージを利用
   TextEditingController userNameController = TextEditingController();
@@ -52,28 +55,19 @@ class AppState extends State<App> {
               responseData['chat_history_max_length'] ?? 1000;
           input_text_length = responseData['input_text_length'] ?? 200;
           globalMonthlyCost = responseData['monthly_cost'] ?? 0.0;
-          globalPlan = responseData['plan'] ?? 'Light';
+          globalPlan = responseData['plan'] ?? 'Free';
 
           // planに応じてmax_monthly_costを決定
           if (globalPlan == 'Free') {
             globalMaxMonthlyCost = Free_max_monthly_cost;
-          } else if (globalPlan == 'Light') {
-            globalMaxMonthlyCost = Light_max_monthly_cost;
-          } else if (globalPlan == 'Standard') {
-            globalMaxMonthlyCost = Standard_max_monthly_cost;
-          } else if (globalPlan == 'Pro') {
-            globalMaxMonthlyCost = Pro_max_monthly_cost;
-          } else if (globalPlan == 'Expert') {
-            globalMaxMonthlyCost = Expert_max_monthly_cost;
           } else {
-            globalMaxMonthlyCost = Light_max_monthly_cost;
+            globalMaxMonthlyCost = Standard_max_monthly_cost;
           }
 
           // UIコントローラの更新
           chatHistoryMaxLengthController.text = chatHistoryMaxLength.toString();
           inputTextLengthController.text = input_text_length.toString();
-          _isDarkMode =
-              responseData['isDarkMode'] ?? false; // true/falseをそのまま使う
+          _isDarkMode = responseData['isDarkMode'] ?? false;
         });
       } else {
         print('データの形式が正しくありません');
@@ -139,42 +133,72 @@ class AppState extends State<App> {
 
   //====================================================================
 
+  // ダークモードの切り替え
   void toggleTheme() {
+    print('toggleTheme関数起動　ダークモードの切り替え');
     setState(() {
       _isDarkMode = !_isDarkMode;
     });
 
     updateUserData(
         'darkmode', {'email': globalEmail, 'isDarkMode': _isDarkMode});
-    print("_isDarkMode = ${_isDarkMode}");
+    print("ダークモード = ${_isDarkMode}");
   }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+  // ユーザーネームの変更
   void changeUserName(String newUserName) {
+    print('changeUserName関数起動　ユーザーネームの変更');
     setState(() {
       global_user_name = newUserName;
       userNameController.text = newUserName; // TextEditingControllerを更新
     });
     updateUserData(
         'user_name', {'email': globalEmail, 'user_name': global_user_name});
-    print(global_user_name);
+    print("ユーザーネーム = ${newUserName}");
   }
 
   //====================================================================
 
   //====================================================================
 
-  // ログアウトメソッドを追加
-  void logout() async {
-    // セッション情報やその他の情報をクリアする
-    await storage.delete(key: "email");
-    await storage.delete(key: "password");
+  Future<void> logout() async {
+    print('ログアウト処理を開始します');
+    try {
+      // 通常ログインの情報を削除
+      await storage.delete(key: "email");
+      await storage.delete(key: "password");
+      await storage.delete(key: "loginDateTime");
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LoginPage()), // ログインページにリダイレクト
-    );
+      // Googleログインの情報を削除
+      await storage.delete(key: "auth_type");
+      await storage.delete(key: "google_email");
+      await storage.delete(key: "google_login_datetime");
+
+      // Googleログアウト処理を実行
+      await _googleAuthService.signOut();
+
+      // グローバル変数をクリア
+      globalEmail = null;
+      globalPlan = null;
+      globalMonthlyCost = 0.0;
+      chatHistoryMaxLength = 1000; // デフォルト値に戻す
+      input_text_length = 200; // デフォルト値に戻す
+
+      print('ログアウトが完了しました');
+
+      // ログインページに遷移
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+    } catch (e) {
+      print('ログアウト中にエラーが発生しました: $e');
+      // エラーが発生してもユーザーをログインページに遷移させる
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+    }
   }
 
   @override
@@ -191,8 +215,8 @@ class AppState extends State<App> {
           chatGPT_MODEL,
           onModelChange,
           changeChatHistoryMaxLength,
-          changeInputTextLength, // 新しい関数を追加
-          input_text_length, // 新しい引数を追加
+          changeInputTextLength,
+          input_text_length,
           logout,
         ),
         body: SelectChat(loadingConfig: loadAndFetchConfigAndCost),

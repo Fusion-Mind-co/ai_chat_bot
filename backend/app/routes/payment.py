@@ -44,91 +44,6 @@ def reserve_cancellation():
 # ===================================================================
 
 
-
-
-
-
-@bp.route('/get/user_status', methods=['GET'])
-def get_user_status():
-    email = request.args.get('email')
-    if not email:
-        return jsonify({"error": "Email is required"}), 400
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute("""
-            SELECT 
-                plan, 
-                payment_status, 
-                next_process_date AT TIME ZONE 'UTC' as next_process_date,
-                next_process_type,
-                next_plan
-            FROM user_account 
-            WHERE email = %s
-        """, (email,))
-        
-        user_data = cursor.fetchone()
-        
-        # 日付を ISO 8601 形式に変換
-        if user_data and user_data['next_process_date']:
-            user_data['next_process_date'] = user_data['next_process_date'].isoformat()
-        
-        return jsonify(user_data), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        cursor.close()
-        conn.close()
-        conn.close()
-
-@bp.route('/reserve-plan-change', methods=['POST'])
-def reserve_plan_change():
-    data = request.json
-    email = data.get('email')
-    new_plan = data.get('new_plan')
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        # 現在の支払い日を取得
-        cursor.execute("""
-            SELECT next_process_date 
-            FROM user_account 
-            WHERE email = %s
-        """, (email,))
-        current_data = cursor.fetchone()
-        
-        # プラン変更を予約
-        cursor.execute("""
-            UPDATE user_account 
-            SET 
-                next_plan = %s,
-                next_process_type = 'plan_change'
-            WHERE email = %s
-        """, (new_plan, email))
-        
-        conn.commit()
-        return jsonify({"message": "Plan change reserved"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-@bp.route('/test/check-subscriptions', methods=['POST'])
-def test_check_subscriptions():
-    """テスト用: 手動でサブスクリプションチェックを実行"""
-    try:
-        SubscriptionService.manual_check()
-        return jsonify({"message": "Subscription check completed"}), 200
-    except Exception as e:
-        print(f"Error in manual check: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
 # payment.py の create_payment_intent
 @bp.route('/create-payment-intent', methods=['POST'])
 def create_payment_intent():
@@ -211,38 +126,7 @@ def create_subscription():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-@bp.route('/update/plan', methods=['POST'])
-def update_plan():
-    data = request.json
-    email = data.get('email')
-    new_plan = data.get('plan')
-    process_type = data.get('process_type', 'payment')  # 追加
 
-    if not email or not new_plan:
-        return jsonify({"error": "Invalid data"}), 400
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute("""
-            UPDATE user_account 
-            SET 
-                plan = %s,
-                next_process_date = NOW() + INTERVAL '1 minute',
-                next_process_type = %s,
-                last_payment_date = NOW()
-            WHERE email = %s
-        """, (new_plan, process_type, email))
-        
-        conn.commit()
-        return jsonify({"message": "Plan updated successfully"}), 200
-    except Exception as e:
-        print(f"Error updating plan: {e}")
-        return jsonify({"error": "Failed to update plan"}), 500
-    finally:
-        cursor.close()
-        conn.close()
 
 @bp.route('/update/payment_status', methods=['POST'])
 def update_payment_status():

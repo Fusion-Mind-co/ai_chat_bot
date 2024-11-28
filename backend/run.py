@@ -43,6 +43,7 @@ def run_schedule():
             print(f"スケジューラーエラー: {e}")
 
 def start_scheduler():
+
     if Config.ENVIRONMENT == 'development':
         # 開発環境では親プロセスでのみスケジューラーを実行
         import os

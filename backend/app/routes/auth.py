@@ -13,6 +13,80 @@ bp = Blueprint('auth', __name__)
 # シリアライザーの初期化
 s = URLSafeTimedSerializer(Config.SECRET_KEY)
 
+# google_login認証
+@bp.route('/google-login', methods=['POST'])
+def google_login():
+    try:
+        data = request.json
+        print(f"Received data: {data}")
+        
+        if 'access_token' in data:
+            email = data.get('email')
+            name = data.get('name', '')
+            
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            try:
+                cursor.execute("BEGIN")
+                
+                cursor.execute("""
+                    SELECT * FROM user_account WHERE email = %s
+                """, (email,))
+                
+                user = cursor.fetchone()
+                print(f"Found user: {user}")
+                
+                if not user:
+                    # 新規ユーザー作成
+                    cursor.execute("""
+                        INSERT INTO user_account (
+                            email, username, plan, created_at, last_login,
+                            next_process_date, next_process_type, monthly_cost,
+                            chat_history_max_length, input_text_length, sortorder
+                        ) VALUES (
+                            %s, %s, 'Free', NOW(), NOW(),
+                            NOW() + INTERVAL '1 month', 'payment',
+                            0, 1000, 200, 'created_at ASC'
+                        ) RETURNING *
+                    """, (email, name))
+                    
+                    new_user = cursor.fetchone()
+                    print(f"Created new user: {new_user}")
+                    message = "アカウントを新規作成しました"
+                else:
+                    message = "ログインしました"
+                
+                cursor.execute("COMMIT")
+                return jsonify({
+                    "success": True,
+                    "message": message,
+                    "email": email
+                }), 200
+                
+            except Exception as e:
+                cursor.execute("ROLLBACK")
+                print(f"Database error: {e}")
+                return jsonify({
+                    "success": False,
+                    "message": "データベースエラーが発生しました"
+                }), 500
+            finally:
+                cursor.close()
+                conn.close()
+        
+        return jsonify({
+            "success": False,
+            "message": "認証情報が無効です"
+        }), 400
+        
+    except Exception as e:
+        print(f"Login error: {e}")
+        return jsonify({
+            "success": False,
+            "message": "サーバーエラーが発生しました"
+        }), 500
+
 @bp.route('/login', methods=['POST'])
 def login():
     try:
@@ -100,6 +174,7 @@ def _validate_signup_data(data):
 
 @bp.route('/reset_password_request', methods=['POST'])
 def reset_password_request():
+    print('def reset_password_request')
     data = request.json
     email = data.get('email')
     

@@ -5,6 +5,7 @@ import 'package:chatbot/globals.dart';
 
 
 Future<void> updateUserData(String endpoint, Map<String, dynamic> data) async {
+  print('updateUserData関数起動　PostgreSQLにデータをアップデート');
   final url = Uri.parse('$serverUrl/update/$endpoint');
   try {
     final response = await http.post(
@@ -14,9 +15,9 @@ Future<void> updateUserData(String endpoint, Map<String, dynamic> data) async {
     );
 
     if (response.statusCode == 200) {
-      print("$endpoint updated successfully");
+      print("$endpoint の更新が完了");
     } else {
-      print("Failed to update $endpoint. Status code: ${response.statusCode}");
+      print("更新失敗 $endpoint. Status code: ${response.statusCode}");
     }
   } catch (e) {
     print("Error updating $endpoint: $e");

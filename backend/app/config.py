@@ -8,6 +8,14 @@ load_dotenv()
 class Config:
 
 
+    # Google OAuth設定
+    GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+    
+    @staticmethod
+    def init_google_auth():
+        if not Config.GOOGLE_CLIENT_ID:
+            raise ValueError("GOOGLE_CLIENT_ID is not set")
+
     INTERVALS = {
             'production': {
                 'scheduler': 1,      # スケジューラーの実行間隔（分）
@@ -20,13 +28,16 @@ class Config:
         }
     
     # 環境変数から現在の環境を取得（デフォルトは'development'）
-    ENVIRONMENT = os.getenv('FLASK_ENV', 'development')
+    ENVIRONMENT = os.getenv('FLASK_ENV')
         
     @staticmethod
     def get_scheduler_interval():
         """スケジューラーの実行間隔を返す"""
         return Config.INTERVALS[Config.ENVIRONMENT]['scheduler']
 
+    # next_process_dateの期間を決定する関数
+    # 本番環境('production')なら"1 month"
+    # 開発環境('development')なら"3 minute"
     @staticmethod
     def get_next_process_interval():
         """次回処理日までの間隔を返す"""
@@ -63,10 +74,7 @@ class Config:
     # サブスクリプション設定
     SUBSCRIPTION_PLANS = {
         'Free': {'price': int(os.getenv('SUBSCRIPTION_FREE_PRICE'))},
-        'Light': {'price': int(os.getenv('SUBSCRIPTION_LIGHT_PRICE'))},
         'Standard': {'price': int(os.getenv('SUBSCRIPTION_STANDARD_PRICE'))},
-        'Pro': {'price': int(os.getenv('SUBSCRIPTION_PRO_PRICE'))},
-        'Expert': {'price': int(os.getenv('SUBSCRIPTION_EXPERT_PRICE'))}
     }
     
     # トークン設定

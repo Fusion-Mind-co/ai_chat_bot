@@ -6,6 +6,7 @@ from ..config import Config
 class EmailService:
     @staticmethod
     def send_email(to_email, subject, content):
+        print('def send_email')
         msg = MIMEText(content)
         msg['Subject'] = subject
         msg['From'] = Config.MAIL_USERNAME
@@ -25,6 +26,7 @@ class EmailService:
 
     @staticmethod
     def send_reset_password(to_email, reset_link):
+        print('def send_reset_password')
         subject = "パスワードリセットリクエスト"
         content = f"パスワードリセットリンク: {reset_link}"
         return EmailService.send_email(to_email, subject, content)
