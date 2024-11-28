@@ -16,26 +16,46 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  final storage = FlutterSecureStorage(); // 安全なストレージを利用
+  final storage = FlutterSecureStorage();
+  final GoogleAuthService _googleAuthService = GoogleAuthService();
 
+  bool isLoading = true; // ローディング状態を管理
   bool isEmailValid = true;
   bool isPasswordValid = true;
   String? errorMessage;
-  bool isPasswordObscured = true; // パスワードの表示/非表示を管理する変数
-  bool rememberMe = false; // Remember Me の状態を管理
-
-  final Duration loginExpirationLimit = Duration(minutes: time_value);
-
-  // Googleログイン
-  final GoogleAuthService _googleAuthService = GoogleAuthService();
+  bool isPasswordObscured = true;
+  bool rememberMe = false;
+  bool rememberGoogleLogin = false; // Google用のRememberMe状態
 
   @override
   void initState() {
     super.initState();
-    _loadRememberedCredentials(); // 初期化時に記憶された情報を読み込む
+    _checkAllLoginStates(); // 初期化時にすべてのログイン状態をチェック
   }
 
-  // Googleログイン処理
+  // すべてのログイン状態をチェック
+  Future<void> _checkAllLoginStates() async {
+    print('ログイン状態の確認を開始します');
+    try {
+      // Googleログインの状態をチェック
+      bool isGoogleLoggedIn = await _googleAuthService.checkLoginState();
+      if (isGoogleLoggedIn) {
+        print('Googleログイン情報が有効です - ホーム画面に遷移します');
+        _navigateToHome();
+        return;
+      }
+      print('Googleログイン情報が見つからないか、期限切れです');
+
+      // 通常ログインの状態をチェック
+      await _loadRememberedCredentials();
+    } catch (e) {
+      print('ログイン状態チェック中にエラーが発生しました: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   Future<void> _handleGoogleSignIn() async {
     try {
@@ -43,10 +63,18 @@ class _LoginPageState extends State<LoginPage> {
         errorMessage = null;
       });
 
-      final success = await _googleAuthService.signInWithGoogle();
+      print('Googleログインを開始します');
+      final success = await _googleAuthService
+          .signInWithGoogle(rememberGoogleLogin); // rememberGoogleLoginを渡す
 
       if (success) {
-        // SnackBarでメッセージを表示
+        print('Googleログインが成功しました');
+        if (rememberGoogleLogin) {
+          print('Googleログイン情報を保存します');
+        } else {
+          print('Googleログイン情報は保存しません');
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('ログインしました'),
@@ -54,13 +82,11 @@ class _LoginPageState extends State<LoginPage> {
             duration: Duration(seconds: 2),
           ),
         );
-        print('Google sign in successful, navigating to home');
 
-        // 少し遅延を入れてSnackBarを表示する時間を確保
         await Future.delayed(Duration(milliseconds: 500));
-
-        Navigator.pushReplacementNamed(context, '/home');
+        _navigateToHome();
       } else {
+        print('Googleログインが失敗しました');
         setState(() {
           errorMessage = 'Googleログインに失敗しました';
         });
@@ -73,6 +99,7 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } catch (e) {
+      print('Googleログイン処理中にエラーが発生しました: $e');
       setState(() {
         errorMessage = 'エラーが発生しました: $e';
       });
@@ -83,40 +110,51 @@ class _LoginPageState extends State<LoginPage> {
           duration: Duration(seconds: 3),
         ),
       );
-      print('Google sign in error: $e');
     }
   }
 
-  // Googleログインボタンの追加
   Widget _buildGoogleSignInButton() {
-    return ElevatedButton(
-      onPressed: _handleGoogleSignIn,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        minimumSize: Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(
-            'assets/google_logo.png',
-            height: 24,
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: _handleGoogleSignIn,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black87,
+            minimumSize: Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-          SizedBox(width: 12),
-          Text('Googleでログイン'),
-        ],
-      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/google_logo.png',
+                height: 24,
+              ),
+              SizedBox(width: 12),
+              Text('Googleでログイン'),
+            ],
+          ),
+        ),
+        CheckboxListTile(
+          title: Text("Googleログイン情報を記憶する"),
+          value: rememberGoogleLogin,
+          onChanged: (bool? value) {
+            setState(() {
+              rememberGoogleLogin = value ?? false;
+            });
+          },
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ],
     );
   }
 
-  // <<<<<ローカルデータ>>>>>
-  // 保存された資格情報を読み込む
   Future<void> _loadRememberedCredentials() async {
-    print('_loadRememberedCredentials関数　パスワード記憶機能');
+    print('保存されたログイン情報を確認しています');
     String? savedEmail = await storage.read(key: "email");
     String? savedPassword = await storage.read(key: "password");
     String? savedDateTime = await storage.read(key: "loginDateTime");
@@ -124,27 +162,35 @@ class _LoginPageState extends State<LoginPage> {
     if (savedEmail != null && savedPassword != null && savedDateTime != null) {
       DateTime? savedDate = DateTime.tryParse(savedDateTime);
       if (savedDate != null) {
-        // 現在の日時と保存された日時の差分を計算
         Duration difference = DateTime.now().difference(savedDate);
+        Duration expirationDuration =
+            LoginExpiration.getNormalLoginExpiration();
 
-        // リミットを超えていないかチェック
-        if (difference <= loginExpirationLimit) {
+        print('現在の${LoginExpiration.isProduction ? "本番" : "テスト"}環境設定:');
+        print(LoginExpiration.getCurrentSettings());
+
+        if (difference <= expirationDuration) {
+          print('ログイン情報が有効期限内です');
           setState(() {
             emailController.text = savedEmail;
             passwordController.text = savedPassword;
             rememberMe = true;
           });
 
-          // 自動的にログインを試みる
-          _attemptAutoLogin(savedEmail, savedPassword);
+          await _attemptAutoLogin(savedEmail, savedPassword);
+        } else {
+          print('ログイン情報の有効期限が切れています');
+          // 期限切れの情報を削除
+          await storage.delete(key: "email");
+          await storage.delete(key: "password");
+          await storage.delete(key: "loginDateTime");
         }
       }
     }
   }
 
-// 自動ログインを試みる
   Future<void> _attemptAutoLogin(String email, String password) async {
-    print('_attemptAutoLogin関数　自動ログイン');
+    print('自動ログインを試行します');
     final url = Uri.parse('$serverUrl/login');
     final response = await http.post(
       url,
@@ -152,24 +198,26 @@ class _LoginPageState extends State<LoginPage> {
       body: json.encode({'email': email, 'password': password}),
     );
 
-    // emailが表示されるかテスト
-    print(email);
+    print('ログイン試行中のメールアドレス: $email');
 
     if (response.statusCode == 200) {
-      // グローバル変数にemailを設定
+      print('自動ログインが成功しました');
       globalEmail = email;
-      Navigator.pushNamed(context, '/home');
-      print('ホーム画面(セレクト画面)に遷移');
+      _navigateToHome();
     } else {
+      print('自動ログインが失敗しました');
       setState(() {
         errorMessage = json.decode(response.body)['message'];
       });
     }
   }
 
-  //<<<<<<　→　pyhon　→　postgreSQL >>>>>>
+  void _navigateToHome() {
+    Navigator.pushReplacementNamed(context, '/home');
+  }
 
   Future<void> login() async {
+    print('手動ログインを開始します');
     if (!isEmailValid || !isPasswordValid) {
       setState(() {
         errorMessage = "入力エラーがあります。";
@@ -188,47 +236,40 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     if (response.statusCode == 200) {
+      print('ログインが成功しました');
       setState(() {
         errorMessage = null;
-        // グローバル変数にemailを設定
         globalEmail = emailController.text;
       });
 
       if (rememberMe) {
-        // Remember Me が有効な場合、資格情報と現在の日時を保存
+        print('ログイン情報を保存します');
         await storage.write(key: "email", value: emailController.text);
         await storage.write(key: "password", value: passwordController.text);
         await storage.write(
             key: "loginDateTime", value: DateTime.now().toString());
       } else {
-        // 無効の場合は保存された資格情報を削除
+        print('保存されたログイン情報を削除します');
         await storage.delete(key: "email");
         await storage.delete(key: "password");
         await storage.delete(key: "loginDateTime");
       }
 
-      // emailが表示されるかテスト
-      print(emailController.text);
-
-      Navigator.pushNamed(
-        context,
-        '/home',
-      ); // ログイン成功時にホーム画面に遷移
+      _navigateToHome();
     } else {
+      print('ログインが失敗しました');
       setState(() {
         errorMessage = json.decode(response.body)['message'];
       });
     }
   }
 
-  // メールアドレスの検証関数
   bool validateEmail(String email) {
     String pattern = r'^[^@]+@[^@]+\.[^@]+$';
     RegExp regex = RegExp(pattern);
     return regex.hasMatch(email) && email.length <= 255;
   }
 
-  // パスワードの検証関数
   bool validatePassword(String password) {
     if (password.length < 8 || password.length > 16) {
       return false;
@@ -250,6 +291,14 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text('ログイン'),
@@ -271,7 +320,7 @@ class _LoginPageState extends State<LoginPage> {
               TextField(
                 controller: passwordController,
                 maxLength: 16,
-                obscureText: isPasswordObscured, // パスワードの表示/非表示を制御
+                obscureText: isPasswordObscured,
                 decoration: InputDecoration(
                   labelText: "password",
                   errorText:
@@ -284,7 +333,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     onPressed: () {
                       setState(() {
-                        isPasswordObscured = !isPasswordObscured; // 表示/非表示を切り替え
+                        isPasswordObscured = !isPasswordObscured;
                       });
                     },
                   ),
@@ -311,9 +360,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: Text('ログイン'),
               ),
               SizedBox(height: 16),
-              // Googleログインボタン
               _buildGoogleSignInButton(),
-
               SizedBox(height: 20),
               Row(
                 children: [
@@ -325,19 +372,17 @@ class _LoginPageState extends State<LoginPage> {
                   Expanded(child: Divider()),
                 ],
               ),
-
               SizedBox(height: 35),
               TextButton(
                 onPressed: () {
-                  Navigator.pushNamed(context, '/signup'); // サインアップページに遷移
+                  Navigator.pushNamed(context, '/signup');
                 },
                 child: Text('アカウント登録はこちら', style: TextStyle(fontSize: 12)),
               ),
               SizedBox(height: 26),
               TextButton(
                 onPressed: () {
-                  Navigator.pushNamed(
-                      context, '/forgot_password'); // パスワードを忘れた場合のページに遷移
+                  Navigator.pushNamed(context, '/forgot_password');
                 },
                 child: Text('パスワードを忘れた場合', style: TextStyle(fontSize: 12)),
               ),

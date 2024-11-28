@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../globals.dart';
 import 'package:chatbot/chat_page/api/api_config.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class GoogleAuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -11,20 +12,56 @@ class GoogleAuthService {
     signInOption: SignInOption.standard,
   );
 
-  Future<bool> signInWithGoogle() async {
+  final storage = FlutterSecureStorage();
+
+  // ログイン状態をチェックする関数
+  Future<bool> checkLoginState() async {
     try {
-      print('Starting Google Sign In...');
+      final String? savedAuthType = await storage.read(key: "auth_type");
+      final String? savedEmail = await storage.read(key: "google_email");
+      final String? savedDateTime =
+          await storage.read(key: "google_login_datetime");
+
+      if (savedAuthType == "google" &&
+          savedEmail != null &&
+          savedDateTime != null) {
+        final savedDate = DateTime.tryParse(savedDateTime);
+        if (savedDate != null) {
+          final difference = DateTime.now().difference(savedDate);
+          Duration expirationDuration =
+              LoginExpiration.getGoogleLoginExpiration();
+
+          print('現在の${LoginExpiration.isProduction ? "本番" : "テスト"}環境設定:');
+          print(LoginExpiration.getCurrentSettings());
+
+          if (difference <= expirationDuration) {
+            globalEmail = savedEmail;
+            await _loadUserConfig(savedEmail);
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (e) {
+      print('ログイン状態チェックでエラー: $e');
+      return false;
+    }
+  }
+
+  Future<bool> signInWithGoogle(bool rememberMe) async {
+    try {
+      print('Googleログインプロセスを開始します');
       await _googleSignIn.signOut();
 
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        print('User cancelled sign in');
+        print('ユーザーがログインをキャンセルしました');
         return false;
       }
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
-      print('Authentication successful');
+      print('Google認証が成功しました');
 
       final response = await http.post(
         Uri.parse('$serverUrl/google-login'),
@@ -39,19 +76,45 @@ class GoogleAuthService {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         globalEmail = googleUser.email;
+
+        if (rememberMe) {
+          print('ログイン情報を保存します');
+          await storage.write(key: "auth_type", value: "google");
+          await storage.write(key: "google_email", value: googleUser.email);
+          await storage.write(
+              key: "google_login_datetime", value: DateTime.now().toString());
+        } else {
+          print('ログイン情報は保存しません');
+          await storage.delete(key: "auth_type");
+          await storage.delete(key: "google_email");
+          await storage.delete(key: "google_login_datetime");
+        }
+
         await _loadUserConfig(googleUser.email);
-        print('Login message: ${responseData['message']}'); // デバッグ用
+        print('ログインメッセージ: ${responseData['message']}');
         return true;
       }
 
       return false;
     } catch (e) {
-      print('Google Sign-In Error: $e');
+      print('Googleログインエラー: $e');
       return false;
     }
   }
 
-  // ユーザー設定を取得
+  // ログアウト処理
+  Future<void> signOut() async {
+    try {
+      await _googleSignIn.signOut();
+      await storage.delete(key: "auth_type");
+      await storage.delete(key: "google_email");
+      await storage.delete(key: "google_login_datetime");
+      globalEmail = null;
+    } catch (e) {
+      print('Sign out error: $e');
+    }
+  }
+
   Future<void> _loadUserConfig(String email) async {
     try {
       final response = await http.get(
@@ -60,8 +123,6 @@ class GoogleAuthService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> config = json.decode(response.body);
-
-        // グローバル変数を更新
         globalMonthlyCost = (config['monthly_cost'] as num).toDouble();
         globalPlan = config['plan'] as String;
         chatHistoryMaxLength = config['chat_history_max_length'] as int;
