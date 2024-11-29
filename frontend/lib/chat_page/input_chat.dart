@@ -109,40 +109,44 @@ class _InputChatState extends State<InputChat> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        TextField(
-          controller: chatController,
-          maxLength: input_text_length,
-          maxLines: null,
-          style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
-          ),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Theme.of(context).brightness == Brightness.dark
-                ? Colors.black54
-                : Colors.white,
-            labelText: _errorMessage ?? 'メッセージを入力してください',
-            labelStyle: TextStyle(
+        Padding(
+          // パディングを追加
+          padding: EdgeInsets.symmetric(horizontal: 10.0), // 左右に16.0のパディング
+          child: TextField(
+            controller: chatController,
+            maxLength: input_text_length,
+            maxLines: null,
+            style: TextStyle(
               color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white60
-                  : Colors.black54,
+                  ? Colors.white
+                  : Colors.black,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.black54
+                  : Colors.white,
+              labelText: _errorMessage ?? 'メッセージを入力してください',
+              labelStyle: TextStyle(
                 color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white30
-                    : Colors.black26,
+                    ? Colors.white60
+                    : Colors.black54,
               ),
-              borderRadius: BorderRadius.circular(20.0),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(
-                color: Theme.of(context).primaryColor,
-                width: 2.0,
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white30
+                      : Colors.black26,
+                ),
+                borderRadius: BorderRadius.circular(20.0),
               ),
-              borderRadius: BorderRadius.circular(20.0),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(
+                  color: Theme.of(context).primaryColor,
+                  width: 2.0,
+                ),
+                borderRadius: BorderRadius.circular(20.0),
+              ),
             ),
           ),
         ),
