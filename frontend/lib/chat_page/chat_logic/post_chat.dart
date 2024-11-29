@@ -1,9 +1,9 @@
 // post_chat.dart
 
+import 'package:chatbot/globals.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:chatbot/app.dart';
-import 'package:chatbot/chat_page/api/api_config.dart';
 import 'package:chatbot/chat_page/api/api_connect.dart';
 import 'package:chatbot/chat_page/api/cost_logic.dart';
 import 'dart:convert';

@@ -70,8 +70,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ChatGPT bot',
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
+      // テーマ関連の設定は全てAppクラスに移動
       initialRoute: '/',
       routes: {
         '/': (context) => LoginPage(),

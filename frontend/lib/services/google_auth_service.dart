@@ -3,7 +3,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../globals.dart';
-import 'package:chatbot/chat_page/api/api_config.dart';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class GoogleAuthService {

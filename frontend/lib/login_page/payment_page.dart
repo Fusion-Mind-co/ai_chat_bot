@@ -1,5 +1,5 @@
 // payment_page.dart
-import 'package:chatbot/chat_page/api/api_config.dart';
+
 import 'package:chatbot/globals.dart';
 import 'package:flutter/material.dart' hide Card; // Materialの'Card'を隠す
 import 'package:flutter_stripe/flutter_stripe.dart';

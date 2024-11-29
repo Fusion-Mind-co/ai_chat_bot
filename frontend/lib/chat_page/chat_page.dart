@@ -32,7 +32,6 @@ class ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _initializeChat() async {
-
     if (global_user_name != null) {
       setUserName(global_user_name);
     }
@@ -55,19 +54,26 @@ class ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: ChatPageAppbar(chatId: widget.chatId),
-      body: Column(
-        children: [
-          Expanded(
-            child: TextBody(chatId: widget.chatId, key: _textBodyKey),
-          ),
-          InputChat(
+    // 現在のテーマを継承
+    final theme = Theme.of(context);
+
+    return Theme(
+      // Themeでラップ
+      data: theme,
+      child: Scaffold(
+        appBar: ChatPageAppbar(chatId: widget.chatId),
+        body: Column(
+          children: [
+            Expanded(
+              child: TextBody(chatId: widget.chatId, key: _textBodyKey),
+            ),
+            InputChat(
               chatId: widget.chatId,
               textBodyKey: _textBodyKey,
               loadingConfig: widget.loadingConfig,
-              ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

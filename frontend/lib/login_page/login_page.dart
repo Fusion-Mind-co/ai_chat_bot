@@ -3,7 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:chatbot/chat_page/api/api_config.dart';
+
 import 'package:chatbot/globals.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:chatbot/services/google_auth_service.dart';

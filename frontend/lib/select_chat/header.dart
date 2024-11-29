@@ -1,7 +1,7 @@
 // header.dart
 import 'package:flutter/material.dart';
 import 'package:chatbot/app.dart';
-import 'package:chatbot/chat_page/api/api_config.dart';
+
 import 'package:chatbot/select_chat/option_modal.dart';
 import 'package:chatbot/globals.dart'; // グローバル変数をインポート
 

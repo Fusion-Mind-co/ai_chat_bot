@@ -1,7 +1,6 @@
 // input_chat.dart
 
 import 'package:flutter/material.dart';
-import 'package:chatbot/chat_page/api/api_config.dart';
 import 'package:chatbot/chat_page/chat_logic/post_chat.dart';
 import 'package:chatbot/chat_page/text_body.dart';
 import 'package:chatbot/globals.dart';

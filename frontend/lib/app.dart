@@ -5,7 +5,7 @@ import 'package:chatbot/services/google_auth_service.dart';
 import 'package:http/http.dart' as http; // httpパッケージのインポート
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:chatbot/chat_page/api/api_config.dart';
+
 import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
 
 import 'package:chatbot/database/postgreSQL_logic.dart';
@@ -34,8 +34,9 @@ class AppState extends State<App> {
   TextEditingController inputTextLengthController =
       TextEditingController(); // 新しいコントローラーを追加
 
+  // ユーザー情報のロード
   Future<void> loadAndFetchConfigAndCost() async {
-    print('設定とコストのロード開始');
+    print('ユーザー情報のロード開始');
 
     // PostgreSQLからユーザー設定とコストを取得
     final url = Uri.parse('$serverUrl/get/config_and_cost?email=$globalEmail');
@@ -69,6 +70,18 @@ class AppState extends State<App> {
           inputTextLengthController.text = input_text_length.toString();
           _isDarkMode = responseData['isDarkMode'] ?? false;
         });
+
+        // ロードした内容を表示
+        print('ロードした設定:');
+        print('  Sort Order: \ $globalSortOrder');
+        print('  Model: \ $chatGPT_MODEL');
+        print('  User Name: \ $global_user_name');
+        print('  Chat History Max Length: \ $chatHistoryMaxLength');
+        print('  Input Text Length: \ $input_text_length');
+        print('  Monthly Cost: \ $globalMonthlyCost');
+        print('  Plan: \ $globalPlan');
+        print('  Max Monthly Cost: \ $globalMaxMonthlyCost');
+        print('  Dark Mode: \ $_isDarkMode');
       } else {
         print('データの形式が正しくありません');
       }
@@ -82,6 +95,7 @@ class AppState extends State<App> {
   //==================================================
 
   void onModelChange(String newModel) {
+    print('onModelChange関数　モデル変更');
     setState(() {
       chatGPT_MODEL = newModel;
     });
@@ -202,10 +216,16 @@ class AppState extends State<App> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: _isDarkMode ? ThemeData.dark() : ThemeData.light(),
-      home: Scaffold(
+Widget build(BuildContext context) {
+  final themeData = _isDarkMode ? ThemeData.dark() : ThemeData.light();
+  
+  return MaterialApp(  // Theme widgetではなくMaterialAppを使用
+    theme: themeData.copyWith(
+      dialogTheme: DialogTheme(
+        backgroundColor: themeData.colorScheme.surface,
+      ),
+    ),
+    home: Scaffold(
         appBar: Header(
           context,
           _isDarkMode,
