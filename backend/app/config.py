@@ -16,32 +16,23 @@ class Config:
         if not Config.GOOGLE_CLIENT_ID:
             raise ValueError("GOOGLE_CLIENT_ID is not set")
 
-    INTERVALS = {
-            'production': {
-                'scheduler': 1,      # スケジューラーの実行間隔（分）
-                'process': "1 month" # 次回処理日までの間隔
-            },
-            'development': {
-                'scheduler': 1,      # スケジューラーの実行間隔（分）
-                'process': "3 minute" # 次回処理日までの間隔
-            }
-        }
+
+    # 環境設定（デフォルトはdevelopment）
+    ENVIRONMENT = os.getenv('FLASK_ENV', 'development')
     
-    # 環境変数から現在の環境を取得（デフォルトは'development'）
-    ENVIRONMENT = os.getenv('FLASK_ENV')
-        
+    # インターバル設定
+    SCHEDULER_INTERVAL = int(os.getenv('SCHEDULER_INTERVAL'))
+    PROCESS_INTERVAL = os.getenv('PROCESS_INTERVAL')
+    
     @staticmethod
     def get_scheduler_interval():
         """スケジューラーの実行間隔を返す"""
-        return Config.INTERVALS[Config.ENVIRONMENT]['scheduler']
+        return Config.SCHEDULER_INTERVAL
 
-    # next_process_dateの期間を決定する関数
-    # 本番環境('production')なら"1 month"
-    # 開発環境('development')なら"3 minute"
     @staticmethod
     def get_next_process_interval():
         """次回処理日までの間隔を返す"""
-        return Config.INTERVALS[Config.ENVIRONMENT]['process']
+        return Config.PROCESS_INTERVAL
         
 
     # Flask設定

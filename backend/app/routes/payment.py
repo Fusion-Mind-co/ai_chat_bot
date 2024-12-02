@@ -3,12 +3,10 @@ from flask import Blueprint, request, jsonify
 from ..services.stripe import StripeService
 from ..services.subscription import SubscriptionService
 from ..database import get_db_connection
+from ..config import Config
 from datetime import datetime, timedelta
 
 bp = Blueprint('payment', __name__)
-
-
-# =============20241105==============================================
 
 # 解約手続き
 @bp.route('/reserve-cancellation', methods=['POST'])
@@ -23,25 +21,33 @@ def reserve_cancellation():
     cursor = conn.cursor()
     
     try:
-        # 現在の支払い日を取得して次回の処理日として設定
+        # 解約予約を設定（次回処理日まではサービスを継続）
         cursor.execute("""
             UPDATE user_account 
             SET 
                 next_process_type = 'cancel',
-                next_plan = NULL
+                next_process_date = CASE 
+                    WHEN next_process_date IS NULL THEN NOW() + INTERVAL '1 minute'
+                    ELSE next_process_date
+                END
             WHERE email = %s
             RETURNING next_process_date
         """, (email,))
         
+        result = cursor.fetchone()
         conn.commit()
-        return jsonify({"message": "Cancellation reserved"}), 200
+        
+        return jsonify({
+            "message": "Cancellation reserved",
+            "next_process_date": result['next_process_date'].isoformat() if result else None
+        }), 200
     except Exception as e:
         conn.rollback()
+        print(f"解約予約エラー: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         conn.close()
-# ===================================================================
 
 
 # payment.py の create_payment_intent
@@ -127,57 +133,108 @@ def create_subscription():
         return jsonify({'error': str(e)}), 400
 
 
+# payment.py の update/plan エンドポイントを修正
 
-@bp.route('/update/payment_status', methods=['POST'])
-def update_payment_status():
-    data = request.json
-    email = data.get('email')
-    payment_status = data.get('payment_status')
+@bp.route('/update/plan', methods=['POST'])
+def update_plan():
+    try:
+        data = request.json
+        email = data.get('email')
+        plan = data.get('plan')
+        process_type = data.get('process_type', 'payment')
+        
+        print(f"プラン更新リクエスト: email={email}, plan={plan}, process_type={process_type}")
+        
+        if not all([email, plan]):
+            return jsonify({"error": "Email and plan are required"}), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            next_interval = Config.get_next_process_interval()
+            # プランと次回処理日を更新
+            cursor.execute("""
+                UPDATE user_account 
+                SET 
+                    plan = %s,
+                    next_process_type = %s,
+                    next_process_date = NOW() + INTERVAL %s,
+                    monthly_cost = 0
+                WHERE email = %s
+                RETURNING next_process_date, plan
+            """, (
+                plan,
+                process_type,
+                next_interval,
+                email
+            ))
+            
+            result = cursor.fetchone()
+            if not result:
+                raise Exception("ユーザーが見つかりません")
+                
+            conn.commit()
+            
+            print(f"プラン更新成功: plan={result['plan']}, next_process_date={result['next_process_date']}")
+            
+            return jsonify({
+                "message": "Plan updated successfully",
+                "plan": result['plan'],
+                "next_process_date": result['next_process_date'].isoformat() if result['next_process_date'] else None
+            }), 200
+            
+        except Exception as e:
+            conn.rollback()
+            print(f"データベース更新エラー: {e}")
+            raise
+            
+        finally:
+            cursor.close()
+            conn.close()
+            
+    except Exception as e:
+        print(f"プラン更新エラー: {e}")
+        return jsonify({"error": str(e)}), 500
+    
 
-    if not email or payment_status is None:
-        return jsonify({"error": "Invalid data"}), 400
 
+@bp.route('/get/user_status', methods=['GET'])
+def get_user_status():
+    email = request.args.get('email')
+    
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+        
     conn = get_db_connection()
     cursor = conn.cursor()
-
+    
     try:
-        # トランザクション開始
-        cursor.execute("BEGIN")
-        
-        # user_accountテーブルの更新
         cursor.execute("""
-            UPDATE user_account 
-            SET 
-                payment_status = %s,
-                next_process_type = CASE 
-                    WHEN %s = true THEN 'payment'
-                    ELSE NULL 
-                END
+            SELECT 
+                plan,
+                next_process_date,
+                next_process_type,
+                monthly_cost
+            FROM user_account 
             WHERE email = %s
-        """, (payment_status, payment_status, email))
+        """, (email,))
         
-        # user_paymentテーブルの更新
-        cursor.execute("""
-            UPDATE user_payment 
-            SET 
-                payment_status = %s,
-                updated_at = NOW()
-            WHERE email = %s 
-            AND id = (
-                SELECT id FROM user_payment 
-                WHERE email = %s 
-                ORDER BY created_at DESC 
-                LIMIT 1
-            )
-        """, (payment_status, email, email))
+        user_data = cursor.fetchone()
         
-        cursor.execute("COMMIT")
-        print(f"支払い状態を更新: email={email}, status={payment_status}")
-        return jsonify({"message": "Payment status updated successfully"}), 200
+        if user_data:
+            return jsonify({
+                "plan": user_data['plan'],
+                "next_process_date": user_data['next_process_date'].isoformat() if user_data['next_process_date'] else None,
+                "next_process_type": user_data['next_process_type'],
+                "monthly_cost": float(user_data['monthly_cost']) if user_data['monthly_cost'] is not None else 0
+            }), 200
+        else:
+            return jsonify({"error": "User not found"}), 404
+            
     except Exception as e:
-        cursor.execute("ROLLBACK")
-        print(f"Error updating payment status: {e}")
-        return jsonify({"error": "Failed to update payment status"}), 500
+        print(f"ユーザー状態の取得エラー: {e}")
+        return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         conn.close()

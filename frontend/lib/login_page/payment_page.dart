@@ -39,7 +39,7 @@ class PaymentPageState extends State<PaymentPage> {
     'Standard': {
       'price': planPrices['Standard'],
       // コスト　これは廃止予定
-      'points': Standard_max_monthly_cost.toInt(), 
+      'points': Standard_max_monthly_cost.toInt(),
       'description': 'ChatGPT 4o 使い放題プラン',
     },
   };
@@ -49,17 +49,57 @@ class PaymentPageState extends State<PaymentPage> {
     print('選択プラン: $plan');
 
     try {
-
       // 初期決済処理
       await _handleInitialPayment(plan);
-    
+      print('決済処理完了');
+
+      print('プラン更新開始: $plan');
+      final response = await http.post(
+        Uri.parse('$serverUrl/update/plan'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(
+            {'email': globalEmail, 'plan': plan, 'process_type': 'payment'}),
+      );
+
+      print('サーバーレスポンス: ${response.statusCode}');
+      print('レスポンスボディ: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        // グローバル変数を更新
+        setState(() {
+          globalPlan = plan;
+          globalMaxMonthlyCost = plan == 'Standard'
+              ? Standard_max_monthly_cost
+              : Free_max_monthly_cost;
+          globalNextProcessDate =
+              DateTime.parse(responseData['next_process_date']);
+          globalNextProcessType = 'payment';
+        });
+
+        // ユーザーに成功を通知
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('プランの更新が完了しました')),
+          );
+        }
+
+        // 最新のユーザー状態を取得
+        await _fetchUserStatus();
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'プランの更新に失敗しました');
+      }
     } catch (e) {
       print('エラー発生:');
       print('  タイプ: ${e.runtimeType}');
       print('  メッセージ: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('エラーが発生しました: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('エラーが発生しました: $e')),
+        );
+      }
     }
   }
 
@@ -86,7 +126,6 @@ class PaymentPageState extends State<PaymentPage> {
     // 2. 決済実行
     final paymentIntentData = jsonDecode(response.body);
     await _processPayment(paymentIntentData);
-
   }
 
   // _processPaymentメソッドを追加
@@ -167,7 +206,7 @@ class PaymentPageState extends State<PaymentPage> {
 
   // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
 
-  // 
+  //
   Future<void> _updateUserPlan(String plan, {String? processType}) async {
     final response = await http.post(
       Uri.parse('$serverUrl/update/plan'),

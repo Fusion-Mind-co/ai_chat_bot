@@ -15,10 +15,9 @@ def create_app(config_class=Config):
     stripe.init_app(app)
     
     # Blueprintの登録
-    from .routes import auth, user, payment, webhook
+    from .routes import auth, user, payment
     app.register_blueprint(auth.bp)
     app.register_blueprint(user.bp)
     app.register_blueprint(payment.bp)
-    app.register_blueprint(webhook.bp)
     
     return app

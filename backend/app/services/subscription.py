@@ -60,7 +60,7 @@ class SubscriptionService:
                 print(f"Freeプランリセットエラー: {e}")
                 conn.rollback()
 
-    # 解約処理を行う関数
+
     @staticmethod
     def process_cancellations(cursor, conn):
         """解約処理"""
@@ -76,17 +76,33 @@ class SubscriptionService:
 
         for user in cancellation_users:
             try:
-                SubscriptionService.create_payment_record(cursor, user['email'], user['plan'], 0, 'auto_subscription', message='プラン解約')
+                print(f"解約処理開始: {user['email']}")
+                
+                # Freeプランに変更する前の最後の支払い記録を作成
+                SubscriptionService.create_payment_record(
+                    cursor, 
+                    user['email'], 
+                    user['plan'], 
+                    0,  # 金額は0
+                    'auto_cancellation',  # 処理区分を解約に
+                    message='プラン解約処理完了'
+                )
+                
+                # ユーザーアカウントをFreeプランに更新し、関連フィールドをnullに
                 cursor.execute("""
                     UPDATE user_account 
                     SET 
-                        next_process_type = 'payment',
-                        next_process_date = NOW() + INTERVAL %s,
                         plan = 'Free',
-                        monthly_cost = 0,
+                        next_process_type = NULL,
+                        next_process_date = NULL,
+                        customer_id = NULL,
+                        monthly_cost = 0
                     WHERE email = %s
-                """, (Config.get_next_process_interval(),user['email'],))
+                """, (user['email'],))
+                
                 conn.commit()
+                print(f"解約処理完了: {user['email']} をFreeプランに変更")
+                
             except Exception as e:
                 print(f"解約処理エラー: {e}")
                 conn.rollback()
