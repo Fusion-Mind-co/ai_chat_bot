@@ -309,15 +309,11 @@ class PaymentPageState extends State<PaymentPage> {
     return Scaffold(
       body: Column(
         children: [
-          // 固定ヘッダー
+          // ヘッダー部分
           Container(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[900]
-                : Colors.white,
             child: SafeArea(
               child: Column(
                 children: [
-                  // 戻るボタンと料金プラン
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: Row(
@@ -340,17 +336,13 @@ class PaymentPageState extends State<PaymentPage> {
                               Text(
                                 '$globalPlan - ${globalMonthlyCost?.toInt() ?? 0}/${globalMaxMonthlyCost.toInt()}pt',
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
+                                    fontSize: 14, color: Colors.grey[600]),
                               ),
                               if (nextProcessType != null)
                                 Text(
                                   _getProcessMessage(),
                                   style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.blue[700],
-                                  ),
+                                      fontSize: 14, color: Colors.blue[700]),
                                 ),
                             ],
                           ),
@@ -364,7 +356,7 @@ class PaymentPageState extends State<PaymentPage> {
             ),
           ),
 
-          // スクロール可能なコンテンツ
+          // メインコンテンツ
           Expanded(
             child: SingleChildScrollView(
               child: Padding(
@@ -380,7 +372,6 @@ class PaymentPageState extends State<PaymentPage> {
                       ),
                     ),
                     SizedBox(height: 8),
-                    // ||=================初回アクセス時のみ表示=====================||
                     if (widget.isInitialAccess)
                       Center(
                         child: TextButton(
@@ -396,7 +387,6 @@ class PaymentPageState extends State<PaymentPage> {
                           ),
                         ),
                       ),
-                    // ||=================初回アクセス時のみ表示=====================||
                     SizedBox(height: 20),
                     ...plans.entries
                         .map((entry) => _buildPlanCard(
@@ -406,16 +396,29 @@ class PaymentPageState extends State<PaymentPage> {
                               entry.value['description'],
                             ))
                         .toList(),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: TextButton(
-                        onPressed: _handleCancellation,
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
+                    if (globalPlan != 'Free')
+                      Container(
+                        width: double.infinity,
+                        margin: EdgeInsets.only(top: 16),
+                        child: OutlinedButton(
+                          onPressed: _handleCancellation,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red[700],
+                            side: BorderSide(color: Colors.red[700]!),
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'プランを解約する',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
-                        child: Text('プランを解約する'),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -431,8 +434,8 @@ class PaymentPageState extends State<PaymentPage> {
     bool isCurrentPlan = plan == globalPlan;
 
     return material.Card(
-      // return とmaterial.Card でOK
       margin: EdgeInsets.symmetric(vertical: 8),
+      color: Theme.of(context).cardColor, // カードの背景色をテーマに合わせる
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -440,18 +443,16 @@ class PaymentPageState extends State<PaymentPage> {
           children: [
             Text(
               description,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             SizedBox(height: 8),
             Text(
               '¥$price/月',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             SizedBox(height: 16),
             SizedBox(
@@ -459,12 +460,22 @@ class PaymentPageState extends State<PaymentPage> {
               child: ElevatedButton(
                 onPressed: isCurrentPlan ? null : () => _handlePayment(plan),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isCurrentPlan ? Colors.grey : Colors.purple,
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Theme.of(context).disabledColor,
+                  disabledForegroundColor: Colors.white70,
+                  elevation: 2,
                   padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: Text(
                   '申し込む',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
