@@ -130,32 +130,11 @@ class SubscriptionService:
             print(f"\n定期支払い処理: {user['email']} ({user['plan']})")
 
             try:
-                # ====================Freeプランの場合================================
+                # Freeプランの場合は処理をスキップ
                 if user['plan'] == 'Free':
-                    # コストリセットと次回処理日の更新のみ
-                    cursor.execute("""
-                        UPDATE user_account 
-                        SET 
-                            monthly_cost = 0,
-                            next_process_date = NOW() + INTERVAL %s,
-                            next_process_type = 'payment'
-                        WHERE email = %s
-                    """, (Config.get_next_process_interval(), user['email']))
-                    
-                    # 処理記録
-                    SubscriptionService.create_payment_record(
-                        cursor, 
-                        user['email'], 
-                        'Free', 
-                        0, 
-                        'auto_free_reset', 
-                        message='Freeプランリセット'
-                    )
-                    
-                    conn.commit()
-                    continue  # 次のユーザーへ
+                    continue
 
-                # # ====================有料プランの場合================================
+                # 有料プランの場合
                 plan_details = Config.SUBSCRIPTION_PLANS.get(user['plan'])
                 if not plan_details:
                     print(f"エラー: 無効なプラン {user['plan']}")
@@ -178,20 +157,38 @@ class SubscriptionService:
                     amount, 
                     'auto_subscription', 
                     transaction_id, 
-                    '定期支払い' if success else error_message
+                    '定期支払い' if success else f'支払い失敗: {error_message}'
                 )
 
-                # 次回処理日の更新
                 if success:
-                    SubscriptionService.update_next_process(cursor, user['email'], 'payment', Config.get_next_process_interval())
+                    # 支払い成功時の処理
+                    cursor.execute("""
+                        UPDATE user_account 
+                        SET 
+                            next_process_type = 'payment',
+                            next_process_date = NOW() + INTERVAL %s,
+                            monthly_cost = 0
+                        WHERE email = %s
+                    """, (Config.get_next_process_interval(), user['email']))
                 else:
-                    SubscriptionService.update_next_process(cursor, user['email'], 'free', Config.get_next_process_interval())
+                    # 支払い失敗時の処理
+                    print(f"支払い失敗: {user['email']} をFreeプランに変更")
+                    cursor.execute("""
+                        UPDATE user_account 
+                        SET 
+                            plan = 'Free',
+                            monthly_cost = 0,
+                            next_process_type = NULL,
+                            next_process_date = NULL,
+                            customer_id = NULL
+                        WHERE email = %s
+                    """, (user['email'],))
 
                 conn.commit()
+
             except Exception as e:
                 print(f"支払い処理エラー: {e}")
                 conn.rollback()
-
 
 
     # 支払い記録を作成する共通関数
