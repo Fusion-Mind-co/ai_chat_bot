@@ -3,8 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:chatbot/app.dart';
 import 'package:chatbot/globals.dart'; // グローバル変数をインポート
-import 'package:chatbot/database/database_interface.dart'; // DatabaseInterfaceをインポート
-import 'package:chatbot/database/database_service.dart';
 import 'package:chatbot/main.dart'; // DatabaseServiceをインポート
 
 class ChatPageAppbar extends StatefulWidget implements PreferredSizeWidget {

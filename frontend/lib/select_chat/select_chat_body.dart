@@ -1,16 +1,13 @@
-// select_chat_body.dart
-
+import 'package:chatbot/database/sqlite_database.dart';
 import 'package:flutter/material.dart';
 import 'package:chatbot/chat_page/chat_page.dart';
 import 'package:chatbot/database/postgreSQL_logic.dart';
 import 'package:chatbot/globals.dart';
-import 'package:chatbot/database/database_interface.dart'; // DatabaseInterfaceをインポート
-import 'package:chatbot/database/database_service.dart';
 import 'dart:convert';
-import 'package:crypto/crypto.dart'; // cryptoパッケージをインポート
+import 'package:crypto/crypto.dart';
 
 class SelectChat extends StatefulWidget {
-  final Function loadingConfig; // コールバックを受け取る
+  final Function loadingConfig;
   SelectChat({required this.loadingConfig});
 
   @override
@@ -19,61 +16,54 @@ class SelectChat extends StatefulWidget {
 
 class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
   List<Map<String, dynamic>> _selectData = [];
+  final SQLiteDatabase _database = SQLiteDatabase.instance;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // Observerを追加
-
-    initializeApp(); // 初期化関数を呼び出す
+    WidgetsBinding.instance.addObserver(this);
+    initializeApp();
   }
 
   Future<void> initializeApp() async {
     try {
-      // メールアドレスをハッシュ化
       generateDatabaseName();
       print('email = $globalEmail');
       print('global_DB_name = $global_DB_name');
 
-      await db.createDB(); // データベースの初期化
+      await _database.database; // データベースの初期化を待機
       print('データベース初期化完了');
 
-      await widget.loadingConfig(); // LoadingConfigの完了を待機
+      await widget.loadingConfig();
 
-      // データベースが初期化された後にチャットデータを取得
       await getSelectChat();
     } catch (e) {
       print('データベース初期化またはチャットデータ取得でエラーが発生しました: $e');
     }
   }
 
-  //=============================2024.10.08作業中===========================
-
-  // メールアドレスをSHA-256でハッシュ化
   void generateDatabaseName() {
-    var bytes = utf8.encode(globalEmail!); // メールアドレスをバイト配列に変換
-    global_DB_name = sha256.convert(bytes).toString(); // ハッシュ化
+    var bytes = utf8.encode(globalEmail!);
+    global_DB_name = sha256.convert(bytes).toString();
   }
-
-  //=============================2024.10.08作業中===========================
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this); // Observerを削除
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      getSelectChat(); // アプリがフォアグラウンドに戻ったときにデータを再取得
+      getSelectChat();
     }
   }
 
   Future<void> getSelectChat() async {
     print('getSelectChat関数 開始');
-    final List<Map<String, dynamic>> selectData =
-        await db.getAllSelectChat(); // データベースから取得
+    final List<Map<String, dynamic>> selectData = 
+        await _database.getAllSelectChat();
     setState(() {
       _selectData = selectData;
     });
@@ -84,8 +74,8 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
     print('newChat関数');
 
     try {
-      int? newChatId = await db.insertNewChat(); // データベースに新しいチャットを挿入
-      print('newChatId: $newChatId'); // デバッグ用
+      int? newChatId = await _database.insertNewChat();
+      print('newChatId: $newChatId');
 
       if (newChatId != null) {
         await Navigator.push(
@@ -93,11 +83,11 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
           MaterialPageRoute(
             builder: (context) => ChatPage(
               chatId: newChatId,
-              loadingConfig: widget.loadingConfig, // コールバックを渡す
+              loadingConfig: widget.loadingConfig,
             ),
           ),
         );
-        getSelectChat(); // 戻ってきたときにデータを再取得
+        getSelectChat();
       } else {
         print("新しいチャットの作成に失敗しました");
       }
@@ -106,7 +96,6 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
     }
   }
 
-  // 並び替えを変更する関数
   void _changeOrder(String newOrder) async {
     print("_changeOrder関数");
 
@@ -114,15 +103,13 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
       globalSortOrder = newOrder;
       print("globalSortOrder = $globalSortOrder");
 
-      getSelectChat(); // ソート条件を適用してデータを再取得
+      getSelectChat();
     });
 
-    // データベースに新しいソート条件を保存
     await updateUserData(
         'sort_order', {'email': globalEmail, 'sortOrder': globalSortOrder});
   }
 
-  // ソートオプションのテキストを取得する関数
   String _getOrderArrow(String order) {
     switch (order) {
       case 'created_at ASC':
@@ -145,7 +132,7 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
         Stack(
           children: [
             Align(
-              alignment: Alignment.center, // 新規チャットボタンを中央に配置
+              alignment: Alignment.center,
               child: ElevatedButton(
                 onPressed: () {
                   newChat();
@@ -154,9 +141,9 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
               ),
             ),
             Align(
-              alignment: Alignment.centerLeft, // ドロップダウンを左寄せ
+              alignment: Alignment.centerLeft,
               child: Container(
-                margin: EdgeInsets.only(left: 16.0), // 画面の端から少し余白を入れる
+                margin: EdgeInsets.only(left: 16.0),
                 child: DropdownButton<String>(
                   value: globalSortOrder,
                   onChanged: (String? newValue) {
@@ -197,22 +184,22 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
                       MaterialPageRoute(
                         builder: (context) => ChatPage(
                           chatId: item['id'],
-                          loadingConfig: widget.loadingConfig, // コールバックを渡す
+                          loadingConfig: widget.loadingConfig,
                         ),
                       ),
                     );
                   } else {
                     print('IDがnullです: $item');
                   }
-                  getSelectChat(); // 戻ってきたときにデータを再取得
+                  getSelectChat();
                 },
                 trailing: IconButton(
                   icon: Icon(Icons.delete),
                   onPressed: () async {
                     if (item['id'] != null) {
                       print("id = ${item['id']}");
-                      await db.deleteChat(item['id']); // データベースからチャットを削除
-                      getSelectChat(); // 再取得してUIを更新
+                      await _database.deleteChat(item['id']);
+                      getSelectChat();
                     } else {
                       print('削除できません。IDがnullです: $item');
                     }

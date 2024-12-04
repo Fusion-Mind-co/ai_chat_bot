@@ -1,9 +1,9 @@
 // globals.dart
 
 // グローバル化管理
+import 'package:chatbot/database/sqlite_database.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
-import 'package:chatbot/database/database_interface.dart'; // kIsWebを使うために必要
 
 String? global_DB_name;
 String? globalEmail;
@@ -17,7 +17,7 @@ int input_text_length = 200;
 
 
 
-
+late SQLiteDatabase db;
 
 
 // サーバーURLを定義するグローバル変数
@@ -30,8 +30,6 @@ Future<void> loadEnvironment() async {
   print('serverUrl = $serverUrl');
 }
 
-// グローバルに管理するデータベースインターフェース
-late DatabaseInterface db;
 
 //プラン
 Map<String, int> planPrices = {

@@ -5,10 +5,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:chatbot/database/postgreSQL_logic.dart';
 import 'package:chatbot/globals.dart'; // グローバル変数をインポート
-
-import 'package:chatbot/database/database_interface.dart'; // DatabaseInterfaceをインポート
-import 'package:chatbot/database/database_service.dart';
 import 'package:chatbot/main.dart'; // DatabaseServiceをインポート
+
+
 
 // モデルごとのコストをマップで管理
 Map<String, Map<String, double>> modelCosts = {

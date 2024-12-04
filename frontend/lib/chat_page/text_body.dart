@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:chatbot/chat_page/user_message.dart';
 import 'package:chatbot/chat_page/ai_message.dart';
-import 'package:chatbot/database/database_interface.dart';
-import 'package:chatbot/database/database_service.dart';
 import 'package:chatbot/globals.dart';
 
 class TextBody extends StatefulWidget {
