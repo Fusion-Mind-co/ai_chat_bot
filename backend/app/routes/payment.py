@@ -91,7 +91,7 @@ def create_payment_intent():
                     amount=amount,
                     next_process_date=datetime.now() + timedelta(minutes=1),
                     transaction_id=payment_intent_id,
-                    message='支払い処理中'
+                    message='有料プラン加入支払い'
                 )
                 
                 conn.commit()
@@ -234,6 +234,44 @@ def get_user_status():
             
     except Exception as e:
         print(f"ユーザー状態の取得エラー: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+
+# 支払い履歴閲覧
+# payment.py に追加
+@bp.route('/get/payment_history', methods=['GET'])
+def get_payment_history():
+    email = request.args.get('email')
+    
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            SELECT processed_date, message, amount
+            FROM user_payment
+            WHERE email = %s
+            ORDER BY processed_date DESC
+        """, (email,))
+        
+        history = []
+        for record in cursor.fetchall():
+            history.append({
+                'processed_date': record['processed_date'].isoformat(),
+                'message': record['message'],
+                'amount': record['amount']
+            })
+            
+        return jsonify({"history": history}), 200
+        
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()

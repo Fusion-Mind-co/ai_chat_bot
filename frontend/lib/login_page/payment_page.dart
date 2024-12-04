@@ -1,6 +1,9 @@
 // payment_page.dart
 
+import 'dart:async';
+
 import 'package:chatbot/globals.dart';
+import 'package:chatbot/payment/payment_history_page.dart';
 import 'package:flutter/material.dart' hide Card; // Materialの'Card'を隠す
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
@@ -18,22 +21,30 @@ class PaymentPage extends StatefulWidget {
   PaymentPageState createState() => PaymentPageState();
 }
 
-// payment_page.dart
 class PaymentPageState extends State<PaymentPage> {
-// ＝＝＝＝＝＝20241105＝＝＝＝＝＝＝＝＝＝＝＝＝
+  Timer? _refreshTimer; // タイマー変数を上部に移動
   DateTime? nextProcessDate;
   String? nextProcessType;
   String? nextPlan;
+  String? selectedPlan;
 
   @override
   void initState() {
     super.initState();
     _fetchUserStatus();
+    // 定期的な状態更新を開始（30秒ごと）
+    _refreshTimer = Timer.periodic(Duration(seconds: 30), (_) {
+      if (mounted) {
+        _fetchUserStatus();
+      }
+    });
   }
 
-// ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
-
-  String? selectedPlan;
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
 
   final Map<String, Map<String, dynamic>> plans = {
     'Standard': {
@@ -268,16 +279,34 @@ class PaymentPageState extends State<PaymentPage> {
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
         setState(() {
+          // グローバル変数を更新
+          globalPlan = userData['plan'];
+          globalMonthlyCost = userData['monthly_cost']?.toDouble() ?? 0.0;
+          globalMaxMonthlyCost = userData['plan'] == 'Standard'
+              ? Standard_max_monthly_cost
+              : Free_max_monthly_cost;
+
+          // 次回処理情報を更新
           nextProcessDate = userData['next_process_date'] != null
               ? DateTime.parse(userData['next_process_date'])
               : null;
           nextProcessType = userData['next_process_type'];
           nextPlan = userData['next_plan'];
 
-          // グローバル変数も更新
           globalNextProcessDate = nextProcessDate;
           globalNextProcessType = nextProcessType;
         });
+
+        // プラン変更を検知したらスナックバーで通知
+        if (mounted && userData['plan'] == 'Free' && globalPlan != 'Free') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  '自動支払いに失敗したため、無料プランに変更されました。\n有料プランに再度加入するには、お支払い情報の再登録が必要です。'),
+              duration: Duration(seconds: 10),
+            ),
+          );
+        }
       }
     } catch (e) {
       print('ユーザー状態の取得に失敗: $e');
@@ -334,7 +363,7 @@ class PaymentPageState extends State<PaymentPage> {
                                 ),
                               ),
                               Text(
-                                '$globalPlan - ${globalMonthlyCost?.toInt() ?? 0}/${globalMaxMonthlyCost.toInt()}pt',
+                                '$globalPlan',
                                 style: TextStyle(
                                     fontSize: 14, color: Colors.grey[600]),
                               ),
@@ -345,6 +374,21 @@ class PaymentPageState extends State<PaymentPage> {
                                       fontSize: 14, color: Colors.blue[700]),
                                 ),
                             ],
+                          ),
+                        ),
+                        // 履歴ボタンをテキストボタンに変更
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PaymentHistoryPage(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            '支払い履歴',
+                            style: TextStyle(color: Colors.blue),
                           ),
                         ),
                       ],
@@ -365,7 +409,7 @@ class PaymentPageState extends State<PaymentPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'プランを設定',
+                      '有料プラン',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

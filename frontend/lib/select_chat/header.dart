@@ -48,7 +48,7 @@ AppBar Header(
               child: Align(
                 alignment: Alignment.centerRight, 
                 child: Text(
-                  "${globalMonthlyCost?.toInt() ?? 0} / ${globalMaxMonthlyCost?.toInt() ?? 0}    ${globalPlan}",
+                  "${globalPlan}",
                   style: TextStyle(
                     fontSize: 12,
                     color: const Color.fromARGB(255, 113, 113, 113),

@@ -30,9 +30,7 @@ class AuthService:
             # パスワードのハッシュ化
             hashed_password = pbkdf2_sha256.hash(password)
             current_time = datetime.now()
-            process_interval = Config.get_next_process_interval()
-
-
+            
             conn = get_db_connection()
             cursor = conn.cursor()
             
@@ -51,10 +49,10 @@ class AuthService:
                         next_process_type
                     ) VALUES (
                         %s, %s, %s, %s, 0.0, %s, %s,
-                        NOW() + INTERVAL %s, 'payment'
+                        NULL, NULL
                     )
                 """, (email, username, hashed_password, plan,
-                      current_time, current_time, process_interval))
+                    current_time, current_time))
 
                 cursor.execute("COMMIT")
                 return True, "アカウント作成成功"
@@ -190,8 +188,8 @@ class AuthService:
                             sortorder
                         ) VALUES (
                             %s, %s, 'Free', NOW(), NOW(),
-                            NOW() + INTERVAL '1 month',
-                            'payment',
+                            NULL,  
+                            NULL,  
                             0,
                             1000,
                             200,

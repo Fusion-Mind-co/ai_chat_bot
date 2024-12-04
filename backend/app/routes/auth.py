@@ -46,7 +46,7 @@ def google_login():
                             chat_history_max_length, input_text_length, sortorder
                         ) VALUES (
                             %s, %s, 'Free', NOW(), NOW(),
-                            NOW() + INTERVAL '1 month', 'payment',
+                            NULL, NULL, 
                             0, 1000, 200, 'created_at ASC'
                         ) RETURNING *
                     """, (email, name))

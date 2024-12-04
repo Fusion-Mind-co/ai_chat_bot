@@ -85,7 +85,7 @@ class SubscriptionService:
                     user['plan'], 
                     0,  # 金額は0
                     'auto_cancellation',  # 処理区分を解約に
-                    message='プラン解約処理完了'
+                    message='プラン解約'
                 )
                 
                 # ユーザーアカウントをFreeプランに更新し、関連フィールドをnullに
@@ -171,8 +171,8 @@ class SubscriptionService:
                         WHERE email = %s
                     """, (Config.get_next_process_interval(), user['email']))
                 else:
-                    # 支払い失敗時の処理
                     print(f"支払い失敗: {user['email']} をFreeプランに変更")
+                    # 支払い失敗時の処理を改善
                     cursor.execute("""
                         UPDATE user_account 
                         SET 
@@ -182,7 +182,19 @@ class SubscriptionService:
                             next_process_date = NULL,
                             customer_id = NULL
                         WHERE email = %s
+                        RETURNING *
                     """, (user['email'],))
+                    
+                    # 失敗記録を作成（メッセージを日本語化）
+                    SubscriptionService.create_payment_record(
+                        cursor, 
+                        user['email'], 
+                        user['plan'], 
+                        amount, 
+                        'auto_subscription', 
+                        transaction_id, 
+                        '自動支払いに失敗したため、無料プランに変更されました。\n新たに有料プランに加入するには、お支払い情報の再登録が必要です。'
+                    )
 
                 conn.commit()
 
