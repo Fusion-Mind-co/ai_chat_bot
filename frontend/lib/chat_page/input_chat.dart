@@ -60,14 +60,6 @@ class _InputChatState extends State<InputChat> {
 
   Future<void> getInputChat() async {
     print('getInputChat() 開始');
-    print(
-        'globalMaxMonthlyCost = $globalMaxMonthlyCost   globalMonthlyCost = $globalMonthlyCost ');
-
-    // 月間コスト上限のチェック
-    if (globalMaxMonthlyCost <= (globalMonthlyCost ?? 0)) {
-      setErrorMessage('上限に達しているため利用できません');
-      return;
-    }
 
     String inputChat = chatController.text;
     if (inputChat.isEmpty) {

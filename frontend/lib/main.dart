@@ -1,4 +1,5 @@
 import 'package:chatbot/database/sqlite_database.dart';
+import 'package:chatbot/payment/payment_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:chatbot/app.dart';
@@ -7,7 +8,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:chatbot/globals.dart';
 import 'package:chatbot/login_page/forgot_password_page.dart';
 import 'package:chatbot/login_page/login_page.dart';
-import 'package:chatbot/login_page/payment_page.dart';
 import 'package:chatbot/login_page/sign_up.dart';
 import 'package:sqflite/sqflite.dart';
 

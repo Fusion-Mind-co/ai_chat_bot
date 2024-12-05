@@ -55,6 +55,13 @@ def google_login():
                     print(f"Created new user: {new_user}")
                     message = "アカウントを新規作成しました"
                 else:
+                    # 既存ユーザーの更新
+                    cursor.execute("""
+                        UPDATE user_account SET
+                            last_login = NOW(),
+                            login_attempts = 0
+                        WHERE email = %s
+                    """, (email,))
                     message = "ログインしました"
                 
                 cursor.execute("COMMIT")
@@ -86,6 +93,7 @@ def google_login():
             "success": False,
             "message": "サーバーエラーが発生しました"
         }), 500
+
 
 @bp.route('/login', methods=['POST'])
 def login():

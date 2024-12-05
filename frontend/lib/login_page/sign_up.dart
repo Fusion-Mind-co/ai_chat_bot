@@ -1,9 +1,9 @@
 import 'dart:convert';
+import 'package:chatbot/payment/payment_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:chatbot/globals.dart';
-import 'payment_page.dart'; // PaymentPageのインポート
 
 class SignUpPage extends StatefulWidget {
   @override

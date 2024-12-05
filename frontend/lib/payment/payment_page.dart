@@ -1,7 +1,6 @@
 // payment_page.dart
 
 import 'dart:async';
-
 import 'package:chatbot/globals.dart';
 import 'package:chatbot/payment/payment_history_page.dart';
 import 'package:flutter/material.dart' hide Card; // Materialの'Card'を隠す
@@ -49,8 +48,6 @@ class PaymentPageState extends State<PaymentPage> {
   final Map<String, Map<String, dynamic>> plans = {
     'Standard': {
       'price': planPrices['Standard'],
-      // コスト　これは廃止予定
-      'points': Standard_max_monthly_cost.toInt(),
       'description': 'ChatGPT 4o 使い放題プラン',
     },
   };
@@ -81,9 +78,6 @@ class PaymentPageState extends State<PaymentPage> {
         // グローバル変数を更新
         setState(() {
           globalPlan = plan;
-          globalMaxMonthlyCost = plan == 'Standard'
-              ? Standard_max_monthly_cost
-              : Free_max_monthly_cost;
           globalNextProcessDate =
               DateTime.parse(responseData['next_process_date']);
           globalNextProcessType = 'payment';
@@ -281,10 +275,6 @@ class PaymentPageState extends State<PaymentPage> {
         setState(() {
           // グローバル変数を更新
           globalPlan = userData['plan'];
-          globalMonthlyCost = userData['monthly_cost']?.toDouble() ?? 0.0;
-          globalMaxMonthlyCost = userData['plan'] == 'Standard'
-              ? Standard_max_monthly_cost
-              : Free_max_monthly_cost;
 
           // 次回処理情報を更新
           nextProcessDate = userData['next_process_date'] != null
@@ -436,8 +426,6 @@ class PaymentPageState extends State<PaymentPage> {
                         .map((entry) => _buildPlanCard(
                               entry.key,
                               entry.value['price'],
-                              entry.value['points'],
-                              entry.value['description'],
                             ))
                         .toList(),
                     if (globalPlan != 'Free')
@@ -473,8 +461,7 @@ class PaymentPageState extends State<PaymentPage> {
     );
   }
 
-  Widget _buildPlanCard(
-      String plan, int price, int points, String description) {
+  Widget _buildPlanCard(String plan, int price) {
     bool isCurrentPlan = plan == globalPlan;
 
     return material.Card(
@@ -485,12 +472,6 @@ class PaymentPageState extends State<PaymentPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              description,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
             SizedBox(height: 8),
             Text(
               '¥$price/月',

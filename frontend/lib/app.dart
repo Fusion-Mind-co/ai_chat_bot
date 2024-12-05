@@ -58,12 +58,6 @@ class AppState extends State<App> {
           globalMonthlyCost = responseData['monthly_cost'] ?? 0.0;
           globalPlan = responseData['plan'] ?? 'Free';
 
-          // planに応じてmax_monthly_costを決定
-          if (globalPlan == 'Free') {
-            globalMaxMonthlyCost = Free_max_monthly_cost;
-          } else {
-            globalMaxMonthlyCost = Standard_max_monthly_cost;
-          }
 
           // UIコントローラの更新
           chatHistoryMaxLengthController.text = chatHistoryMaxLength.toString();

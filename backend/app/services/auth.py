@@ -97,9 +97,10 @@ class AuthService:
                     UPDATE user_account 
                     SET login_attempts = 0, 
                         last_attempt_time = NULL, 
-                        unlock_token = NULL 
+                        unlock_token = NULL,
+                        last_login = %s
                     WHERE email = %s
-                """, (email,))
+                """, (datetime.now(), email))
                 return True, "ログイン成功"
             else:
                 new_attempts = user['login_attempts'] + 1
@@ -114,6 +115,7 @@ class AuthService:
         except Exception as e:
             print(f"Password check error: {e}")
             return False, "認証エラーが発生しました"
+
 
 
     @staticmethod
