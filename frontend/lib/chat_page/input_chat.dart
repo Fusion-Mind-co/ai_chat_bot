@@ -36,30 +36,7 @@ class _InputChatState extends State<InputChat> {
     });
   }
 
-  //==============ローディングくるくるアニメーション関数========================
-  void showLoadingDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text("Loading..."),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
-  void hideLoadingDialog(BuildContext context) {
-    Navigator.of(context, rootNavigator: true).pop(); // ダイアログを閉じる
-  }
-  //========================================================================
 
 
   Future<void> getInputChat() async {
@@ -71,41 +48,52 @@ class _InputChatState extends State<InputChat> {
       return;
     }
 
-    showLoadingDialog(context);
-
     try {
+      // チャットが初回かつタイトルが初期値かチェック
       final chatData = await db.getSelectChatById(widget.chatId);
       final messages = await db.getChatMessages(widget.chatId);
       bool isFirstChat = messages.isEmpty;
       bool isDefaultTitle = chatData?['title'] == "新しいchat";
 
-      String? gptAnswer = await postChatGPT(inputChat);
+      // 入力フィールドをクリアして、ローディング状態を解除
+      chatController.clear();
+      setErrorMessage(null);
 
-      if (gptAnswer != null) {
-        int userMessageId = await db.postChatDB(widget.chatId, inputChat, true, null);
-        await db.postChatDB(widget.chatId, gptAnswer, false, userMessageId);
+      // ユーザーメッセージをデータベースに保存し、UIに即時反映
+      int userMessageId =
+          await db.postChatDB(widget.chatId, inputChat, true, null);
+      widget.textBodyKey.currentState?.loadMessages(widget.chatId);
 
-        // 初回チャットでデフォルトタイトルの場合、タイトルを自動生成し即時反映
-        if (isFirstChat && isDefaultTitle) {
-          String newTitle = await generateChatTitle(inputChat);
-          await db.updateChatTitle(newTitle, widget.chatId);
-          // AppBarのタイトルを更新
-          widget.appBarKey.currentState?.updateTitleText(newTitle);
-        }
+      try {
+        // ストリーミングレスポンスを取得
+        Stream<String> gptStream = await postChatGPTStream(inputChat);
 
-        widget.textBodyKey.currentState?.loadMessages(widget.chatId);
-        widget.loadingConfig();
-        chatController.clear();
-        await db.updateChatUpdatedAt(widget.chatId);
-        setErrorMessage(null);
-      } else {
+        // テキストボディにストリーミングメッセージを追加
+        widget.textBodyKey.currentState?.addStreamingMessage(
+          gptStream,
+          (String completeMessage) async {
+            // メッセージ完了時の処理
+            await db.postChatDB(
+                widget.chatId, completeMessage, false, userMessageId);
+
+            // 初回チャットの場合のタイトル生成
+            if (isFirstChat && isDefaultTitle) {
+              String newTitle = await generateChatTitle(inputChat);
+              await db.updateChatTitle(newTitle, widget.chatId);
+              widget.appBarKey.currentState?.updateTitleText(newTitle);
+            }
+
+            await db.updateChatUpdatedAt(widget.chatId);
+            widget.loadingConfig();
+          },
+        );
+      } catch (e) {
+        print('GPTストリーミングエラー: $e');
         setErrorMessage('GPTの応答が取得できませんでした');
       }
     } catch (e) {
       setErrorMessage('通信エラーが発生しました');
       print('通信エラーが発生しました: $e');
-    } finally {
-      hideLoadingDialog(context);
     }
   }
 

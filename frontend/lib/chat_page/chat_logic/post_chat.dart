@@ -8,11 +8,93 @@ import 'package:chatbot/chat_page/api/api_connect.dart';
 import 'package:chatbot/chat_page/api/cost_logic.dart';
 import 'dart:convert';
 import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
+import 'dart:async';
 
+Future<Stream<String>> postChatGPTStream(String text) async {
+  print("postChatGPTStream関数");
+
+  final myToken = dotenv.get('MY_TOKEN');
+  var url = Uri.https("api.openai.com", "/v1/chat/completions");
+  final client = http.Client();
+  final streamController = StreamController<String>();
+
+  try {
+    addMessage("user", text);
+    final chatHistory = getChatHistory();
+
+    final requestBody = json.encode({
+      "model": chatGPT_MODEL,
+      "messages": chatHistory,
+      "max_tokens": answer_GPT_token_length,
+      "stream": true,
+    });
+
+    final request = http.Request('POST', url);
+    request.headers.addAll({
+      "Content-Type": "application/json",
+      "Authorization": "Bearer $myToken",
+      "Accept": "text/event-stream",
+    });
+    request.body = requestBody;
+
+    final response = await client.send(request);
+    print('レスポンスステータス: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      String fullMessage = '';
+
+      response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen(
+        (String line) async {
+          if (line.startsWith('data: ') && line != 'data: [DONE]') {
+            try {
+              final data = json.decode(line.substring(6));
+              final content = data['choices'][0]['delta']['content'] ?? '';
+              if (content.isNotEmpty) {
+                print('コンテンツ追加: $content');
+                fullMessage += content;
+                streamController.add(content);
+              }
+            } catch (e) {
+              print('JSONパースエラー: $e');
+            }
+          } else if (line == 'data: [DONE]') {
+            print('ストリーム完了');
+            print('完全なメッセージ: $fullMessage');
+            addMessage("assistant", fullMessage);
+            await Future.delayed(Duration(milliseconds: 100)); // 遅延を追加
+            await streamController.close();
+          }
+        },
+        onDone: () {
+          client.close();
+        },
+        onError: (error) {
+          print('ストリームエラー: $error');
+          streamController.addError(error);
+          client.close();
+        },
+        cancelOnError: false,
+      );
+
+      return streamController.stream;
+    } else {
+      throw Exception('APIリクエストエラー: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('通信エラー: $e');
+    streamController.addError(e);
+    await streamController.close();
+    client.close();
+    rethrow;
+  }
+}
 
 Future<String?> postChatGPT(String text) async {
   print("postChatGPT関数");
-  
+
   final myToken = dotenv.get('MY_TOKEN');
 
   var url = Uri.https(
@@ -82,9 +164,6 @@ Future<String?> postChatGPT(String text) async {
   }
 }
 
-
-
-
 // chatタイトルをaiで生成する関数
 
 Future<String> generateChatTitle(String firstMessage) async {
@@ -99,22 +178,21 @@ Future<String> generateChatTitle(String firstMessage) async {
           "role": "system",
           "content": "チャット内容から適切なタイトルを20文字以内で生成してください。余計な説明は不要です。"
         },
-        {
-          "role": "user",
-          "content": "以下のチャット内容のタイトルを生成してください：\n$firstMessage"
-        }
+        {"role": "user", "content": "以下のチャット内容のタイトルを生成してください：\n$firstMessage"}
       ],
       "max_tokens": 50,
     });
 
-    final response = await http.post(
-      url,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $myToken"
-      },
-      body: requestBody,
-    ).timeout(Duration(seconds: time_out_value));
+    final response = await http
+        .post(
+          url,
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer $myToken"
+          },
+          body: requestBody,
+        )
+        .timeout(Duration(seconds: time_out_value));
 
     if (response.statusCode == 200) {
       Map<String, dynamic> data = json.decode(utf8.decode(response.bodyBytes));
