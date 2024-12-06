@@ -1,5 +1,6 @@
 // input_chat.dart
 
+import 'package:chatbot/chat_page/chat_page_appBar.dart';
 import 'package:flutter/material.dart';
 import 'package:chatbot/chat_page/chat_logic/post_chat.dart';
 import 'package:chatbot/chat_page/text_body.dart';
@@ -11,11 +12,13 @@ final chatController = TextEditingController();
 class InputChat extends StatefulWidget {
   final int chatId;
   final GlobalKey<TextBodyState> textBodyKey;
-  final Function loadingConfig; // コールバックを受け取る
+  final GlobalKey<ChatPageAppbarState> appBarKey; // AppBarのKeyを追加
+  final Function loadingConfig;
 
   InputChat({
     required this.chatId,
     required this.textBodyKey,
+    required this.appBarKey, // 追加
     required this.loadingConfig,
   });
 
@@ -58,6 +61,7 @@ class _InputChatState extends State<InputChat> {
   }
   //========================================================================
 
+
   Future<void> getInputChat() async {
     print('getInputChat() 開始');
 
@@ -70,30 +74,38 @@ class _InputChatState extends State<InputChat> {
     showLoadingDialog(context);
 
     try {
+      final chatData = await db.getSelectChatById(widget.chatId);
+      final messages = await db.getChatMessages(widget.chatId);
+      bool isFirstChat = messages.isEmpty;
+      bool isDefaultTitle = chatData?['title'] == "新しいchat";
+
       String? gptAnswer = await postChatGPT(inputChat);
 
       if (gptAnswer != null) {
-        //　ユーザーメッセージをデータベースに保存
-        int userMessageId =
-            await db.postChatDB(widget.chatId, inputChat, true, null);
-        //　GPTメッセージをデータベースに保存
+        int userMessageId = await db.postChatDB(widget.chatId, inputChat, true, null);
         await db.postChatDB(widget.chatId, gptAnswer, false, userMessageId);
 
-        // UIの更新や設定の再読み込み
+        // 初回チャットでデフォルトタイトルの場合、タイトルを自動生成し即時反映
+        if (isFirstChat && isDefaultTitle) {
+          String newTitle = await generateChatTitle(inputChat);
+          await db.updateChatTitle(newTitle, widget.chatId);
+          // AppBarのタイトルを更新
+          widget.appBarKey.currentState?.updateTitleText(newTitle);
+        }
+
         widget.textBodyKey.currentState?.loadMessages(widget.chatId);
         widget.loadingConfig();
         chatController.clear();
         await db.updateChatUpdatedAt(widget.chatId);
-        setErrorMessage(null); // エラーメッセージをリセット
+        setErrorMessage(null);
       } else {
         setErrorMessage('GPTの応答が取得できませんでした');
       }
     } catch (e) {
       setErrorMessage('通信エラーが発生しました');
-      print('通信エラーが発生しました: $e'); // 例外の詳細をログに表示
+      print('通信エラーが発生しました: $e');
     } finally {
-      await updateGlobalMonthlyCost(); // グローバルコストを更新
-      hideLoadingDialog(context); // ローディングダイアログを閉じる
+      hideLoadingDialog(context);
     }
   }
 

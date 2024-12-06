@@ -23,6 +23,7 @@ class ChatPageState extends State<ChatPage> {
 
   // GlobalKeyを定義
   final GlobalKey<TextBodyState> _textBodyKey = GlobalKey<TextBodyState>();
+  final GlobalKey<ChatPageAppbarState> _appBarKey = GlobalKey<ChatPageAppbarState>();
 
   @override
   void initState() {
@@ -51,17 +52,18 @@ class ChatPageState extends State<ChatPage> {
     await loadChatHistoryFromDB(widget.chatId);
     setState(() {});
   }
-
+  
   @override
   Widget build(BuildContext context) {
-    // 現在のテーマを継承
     final theme = Theme.of(context);
 
     return Theme(
-      // Themeでラップ
       data: theme,
       child: Scaffold(
-        appBar: ChatPageAppbar(chatId: widget.chatId),
+        appBar: ChatPageAppbar(
+          chatId: widget.chatId,
+          key: _appBarKey, // GlobalKeyを設定
+        ),
         body: Column(
           children: [
             Expanded(
@@ -70,6 +72,7 @@ class ChatPageState extends State<ChatPage> {
             InputChat(
               chatId: widget.chatId,
               textBodyKey: _textBodyKey,
+              appBarKey: _appBarKey, // AppBarのKeyを渡す
               loadingConfig: widget.loadingConfig,
             ),
           ],

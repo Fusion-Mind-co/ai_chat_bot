@@ -81,3 +81,51 @@ Future<String?> postChatGPT(String text) async {
     return null;
   }
 }
+
+
+
+
+// chatタイトルをaiで生成する関数
+
+Future<String> generateChatTitle(String firstMessage) async {
+  final myToken = dotenv.get('MY_TOKEN');
+  var url = Uri.https("api.openai.com", "/v1/chat/completions");
+
+  try {
+    final requestBody = json.encode({
+      "model": "gpt-3.5-turbo",
+      "messages": [
+        {
+          "role": "system",
+          "content": "チャット内容から適切なタイトルを20文字以内で生成してください。余計な説明は不要です。"
+        },
+        {
+          "role": "user",
+          "content": "以下のチャット内容のタイトルを生成してください：\n$firstMessage"
+        }
+      ],
+      "max_tokens": 50,
+    });
+
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $myToken"
+      },
+      body: requestBody,
+    ).timeout(Duration(seconds: time_out_value));
+
+    if (response.statusCode == 200) {
+      Map<String, dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+      String title = data['choices'][0]['message']['content'];
+      return title.trim();
+    } else {
+      print('タイトル生成エラー: ${response.statusCode}');
+      return "新しいchat";
+    }
+  } catch (e) {
+    print('タイトル生成でエラーが発生: $e');
+    return "新しいchat";
+  }
+}

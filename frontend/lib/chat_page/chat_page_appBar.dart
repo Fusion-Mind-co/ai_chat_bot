@@ -8,7 +8,10 @@ import 'package:chatbot/main.dart'; // DatabaseServiceをインポート
 class ChatPageAppbar extends StatefulWidget implements PreferredSizeWidget {
   final int chatId;
 
-  ChatPageAppbar({required this.chatId});
+  ChatPageAppbar({
+    required this.chatId,
+    Key? key,  // keyパラメータを追加
+  }) : super(key: key);  // superコンストラクタにkeyを渡す
 
   @override
   ChatPageAppbarState createState() => ChatPageAppbarState();
@@ -16,6 +19,7 @@ class ChatPageAppbar extends StatefulWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
 }
+
 
 class ChatPageAppbarState extends State<ChatPageAppbar> {
   bool _hasError = false;
@@ -51,6 +55,14 @@ class ChatPageAppbarState extends State<ChatPageAppbar> {
     if (_titleController.text != null) {
       await db.updateChatTitle(title, widget.chatId); // データベースにタイトルを更新
     }
+  }
+
+  
+  // タイトルを更新するメソッドを追加
+  void updateTitleText(String newTitle) {
+    setState(() {
+      _titleController.text = newTitle;
+    });
   }
 
   @override
