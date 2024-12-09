@@ -6,7 +6,9 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 from ..config import Config
 from ..database import execute_query  
 from ..database import get_db_connection  
-from datetime import datetime, timedelta  
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+import os
 
 bp = Blueprint('auth', __name__)
 
@@ -180,6 +182,8 @@ def _validate_signup_data(data):
         data.get('password')
     ])
 
+
+
 @bp.route('/reset_password_request', methods=['POST'])
 def reset_password_request():
     print('def reset_password_request')
@@ -190,11 +194,12 @@ def reset_password_request():
         return jsonify({"message": "メールアドレスが必要です"}), 400
 
     token = s.dumps(email, salt='password-reset-salt')
-    reset_link = f'http://localhost:5000/reset_password/{token}'
+    reset_link = f"{os.getenv('SERVER_URL')}/reset_password/{token}"
     
     if EmailService.send_reset_password(email, reset_link):
         return jsonify({"message": "パスワードリセットのリンクが送信されました"}), 200
     return jsonify({"message": "メール送信に失敗しました"}), 500
+
 
 @bp.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
@@ -216,8 +221,10 @@ def unlock_account(token):
     try:
         email = s.loads(token, salt='unlock-salt', max_age=3600)
     except SignatureExpired:
-        return jsonify({"message": "解除リンクの有効期限が切れています"}), 400
+        return render_template('error.html', error_message="解除リンクの有効期限が切れています"), 400
 
     if AuthService.unlock_account(email):
-        return render_template('unlock_account.html')
-    return jsonify({"message": "アカウントの解除に失敗しました"}), 500
+        return render_template('unlock_account.html')  # HTMLテンプレートを返却
+    return render_template('error.html', error_message="アカウントの解除に失敗しました"), 500
+
+

@@ -1,7 +1,7 @@
 // app.dart
 
 import 'dart:convert';
-import 'package:chatbot/services/google_auth_service.dart';
+import 'package:chatbot/login_page/google_auth_service.dart';
 import 'package:http/http.dart' as http; // httpパッケージのインポート
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';

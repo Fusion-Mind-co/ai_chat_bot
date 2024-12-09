@@ -7,7 +7,11 @@ from ..database import get_db_connection
 import os
 from google.oauth2 import id_token
 from google.auth.transport import requests
+from ..services.email import EmailService
+from itsdangerous import URLSafeTimedSerializer 
 
+# シリアライザーの初期化
+s = URLSafeTimedSerializer(Config.SECRET_KEY)  
 
 class AuthService:
     @staticmethod
@@ -71,6 +75,8 @@ class AuthService:
     @staticmethod
     def login(email, password):
         """ユーザーログイン処理"""
+
+
         query = """
             SELECT password_hash, login_attempts, last_attempt_time, unlock_token 
             FROM user_account 
@@ -84,11 +90,26 @@ class AuthService:
         user = result[0]
             
         # ロックアウトチェック
-        if user['login_attempts'] >= int(os.getenv('MAX_LOGIN_ATTEMPTS')):
+        if user['login_attempts'] >= int(os.getenv('MAX_LOGIN_ATTEMPTS', 5)):
             if user['last_attempt_time']:
-                lockout_time = user['last_attempt_time'] + timedelta(minutes=int(os.getenv('LOCKOUT_TIME')))
+                lockout_time = user['last_attempt_time'] + timedelta(minutes=int(os.getenv('LOCKOUT_TIME', 30)))
                 if datetime.now() < lockout_time:
-                    return False, "アカウントがロックされました。メールをご確認ください。"
+                    if not user['unlock_token']:
+                        unlock_token = s.dumps(email, salt='unlock-salt')
+                        execute_query("""
+                            UPDATE user_account
+                            SET unlock_token = %s
+                            WHERE email = %s
+                        """, (unlock_token, email))
+
+                        unlock_link = f"{os.getenv('SERVER_URL')}/unlock_account/{unlock_token}"
+                        EmailService.send_unlock_notification(email, unlock_link)
+
+                    # ログを追加
+                    print(f"アカウントロック: {email}, 次回試行可能時刻: {lockout_time}")
+                    return False, "アカウントがロックされています。解除メールを確認してください。"
+
+
 
         # パスワードチェックを修正
         try:

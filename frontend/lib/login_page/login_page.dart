@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:chatbot/globals.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:chatbot/services/google_auth_service.dart';
+import 'package:chatbot/login_page/google_auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   @override
