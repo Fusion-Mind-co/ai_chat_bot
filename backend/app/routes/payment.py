@@ -133,8 +133,6 @@ def create_subscription():
         return jsonify({'error': str(e)}), 400
 
 
-# payment.py の update/plan エンドポイントを修正
-
 @bp.route('/update/plan', methods=['POST'])
 def update_plan():
     try:
@@ -143,30 +141,29 @@ def update_plan():
         plan = data.get('plan')
         process_type = data.get('process_type', 'payment')
         
-        print(f"プラン更新リクエスト: email={email}, plan={plan}, process_type={process_type}")
-        
-        if not all([email, plan]):
-            return jsonify({"error": "Email and plan are required"}), 400
-            
         conn = get_db_connection()
         cursor = conn.cursor()
         
         try:
             next_interval = Config.get_next_process_interval()
-            # プランと次回処理日を更新
             cursor.execute("""
                 UPDATE user_account 
                 SET 
                     plan = %s,
                     next_process_type = %s,
                     next_process_date = NOW() + INTERVAL %s,
-                    monthly_cost = 0
+                    monthly_cost = 0,
+                    selectedmodel = CASE 
+                        WHEN %s = 'Standard' THEN 'gpt-4o'
+                        ELSE 'gpt-3.5-turbo'
+                    END
                 WHERE email = %s
-                RETURNING next_process_date, plan
+                RETURNING next_process_date, plan, selectedmodel
             """, (
                 plan,
                 process_type,
                 next_interval,
+                plan,
                 email
             ))
             
@@ -176,12 +173,13 @@ def update_plan():
                 
             conn.commit()
             
-            print(f"プラン更新成功: plan={result['plan']}, next_process_date={result['next_process_date']}")
+            print(f"プラン更新成功: plan={result['plan']}, model={result['selectedmodel']}")
             
             return jsonify({
                 "message": "Plan updated successfully",
                 "plan": result['plan'],
-                "next_process_date": result['next_process_date'].isoformat() if result['next_process_date'] else None
+                "next_process_date": result['next_process_date'].isoformat() if result['next_process_date'] else None,
+                "selectedmodel": result['selectedmodel']
             }), 200
             
         except Exception as e:
@@ -215,7 +213,8 @@ def get_user_status():
                 plan,
                 next_process_date,
                 next_process_type,
-                monthly_cost
+                monthly_cost,
+                selectedmodel
             FROM user_account 
             WHERE email = %s
         """, (email,))
@@ -227,7 +226,8 @@ def get_user_status():
                 "plan": user_data['plan'],
                 "next_process_date": user_data['next_process_date'].isoformat() if user_data['next_process_date'] else None,
                 "next_process_type": user_data['next_process_type'],
-                "monthly_cost": float(user_data['monthly_cost']) if user_data['monthly_cost'] is not None else 0
+                "monthly_cost": float(user_data['monthly_cost']) if user_data['monthly_cost'] is not None else 0,
+                "selectedmodel": user_data['selectedmodel']
             }), 200
         else:
             return jsonify({"error": "User not found"}), 404

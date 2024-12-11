@@ -3,7 +3,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 import 'package:chatbot/globals.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:chatbot/login_page/google_auth_service.dart';
@@ -164,10 +163,7 @@ class _LoginPageState extends State<LoginPage> {
       if (savedDate != null) {
         Duration difference = DateTime.now().difference(savedDate);
         Duration expirationDuration =
-            LoginExpiration.getNormalLoginExpiration();
-
-        print('現在の${LoginExpiration.isProduction ? "本番" : "テスト"}環境設定:');
-        print(LoginExpiration.getCurrentSettings());
+            LoginExpiration.getLoginExpiration();
 
         if (difference <= expirationDuration) {
           print('ログイン情報が有効期限内です');

@@ -1,6 +1,7 @@
 // payment_page.dart
 
 import 'dart:async';
+import 'package:chatbot/app.dart';
 import 'package:chatbot/globals.dart';
 import 'package:chatbot/payment/payment_history_page.dart';
 import 'package:flutter/material.dart' hide Card; // Materialの'Card'を隠す
@@ -75,12 +76,16 @@ class PaymentPageState extends State<PaymentPage> {
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
 
-        // グローバル変数を更新
         setState(() {
           globalPlan = plan;
           globalNextProcessDate =
               DateTime.parse(responseData['next_process_date']);
           globalNextProcessType = 'payment';
+
+          // モデルの更新を追加
+          if (responseData['selectedmodel'] != null) {
+            chatGPT_MODEL = responseData['selectedmodel']; // グローバル変数を更新
+          }
         });
 
         // ユーザーに成功を通知
@@ -264,7 +269,6 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
-// ＝＝＝＝＝＝＝＝＝＝＝＝＝＝20241105作業中＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
   Future<void> _fetchUserStatus() async {
     try {
       final response = await http.get(
@@ -273,10 +277,13 @@ class PaymentPageState extends State<PaymentPage> {
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
         setState(() {
-          // グローバル変数を更新
           globalPlan = userData['plan'];
 
-          // 次回処理情報を更新
+          // モデルの更新を追加
+          if (userData['selectedmodel'] != null) {
+            selectedModel = userData['selectedmodel'];
+          }
+
           nextProcessDate = userData['next_process_date'] != null
               ? DateTime.parse(userData['next_process_date'])
               : null;

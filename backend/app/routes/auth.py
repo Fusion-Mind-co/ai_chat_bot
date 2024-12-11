@@ -40,22 +40,23 @@ def google_login():
                 print(f"Found user: {user}")
                 
                 if not user:
-                    # 新規ユーザー作成
                     cursor.execute("""
                         INSERT INTO user_account (
                             email, username, plan, created_at, last_login,
                             next_process_date, next_process_type, monthly_cost,
-                            chat_history_max_length, input_text_length, sortorder
+                            chat_history_max_length, input_text_length, sortorder,
+                            selectedmodel
                         ) VALUES (
                             %s, %s, 'Free', NOW(), NOW(),
                             NULL, NULL, 
-                            0, 1000, 200, 'created_at ASC'
-                        ) RETURNING *
+                            0, 1000, 200, 'created_at ASC',
+                            'gpt-3.5-turbo'
+                        )
                     """, (email, name))
                     
-                    new_user = cursor.fetchone()
-                    print(f"Created new user: {new_user}")
+                    print(f"Created new user with email: {email}")
                     message = "アカウントを新規作成しました"
+                    
                 else:
                     # 既存ユーザーの更新
                     cursor.execute("""
@@ -150,30 +151,50 @@ def check_email():
         print(f"Email check error: {e}")  # デバッグ用
         return jsonify({"message": "サーバーエラーが発生しました"}), 500
 
+# auth.py の signup エンドポイントを修正
+
 @bp.route('/signup', methods=['POST'])
 def signup():
+    data = request.json
+    email = data.get('email')
+    username = data.get('username')
+    password = data.get('password')
+    plan = data.get('plan', 'Free')  
+    selected_model = data.get('selected_model', 'gpt-3.5-turbo')  
+    
+    if not all([email, password]):
+        return jsonify({"error": "Required fields are missing"}), 400
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
     try:
-        # 1. リクエストデータの検証
-        data = request.json
-        if not all([data.get('email'), data.get('username'), data.get('password')]):
-            return jsonify({"message": "必要なフィールドが不足しています"}), 400
-
-        # 2. サービス層の呼び出し
-        success, message = AuthService.signup(
-            email=data.get('email'),
-            username=data.get('username'),
-            password=data.get('password'),
-            plan=data.get('plan', 'Free')
-        )
-
-        # 3. レスポンスの返却
-        if success:
-            return jsonify({"message": message}), 200
-        return jsonify({"message": message}), 500
-
+        # パスワードのハッシュ化
+        password_hash = generate_password_hash(password)
+        
+        # ユーザーアカウントの作成
+        cursor.execute("""
+            INSERT INTO user_account (
+                email, 
+                username, 
+                password_hash, 
+                plan,
+                selectedmodel,
+                created_at
+            ) VALUES (
+                %s, %s, %s, %s, %s, NOW()
+            )
+        """, (email, username, password_hash, plan, selected_model))
+        
+        conn.commit()
+        return jsonify({"message": "User registered successfully"}), 200
+        
     except Exception as e:
-        print(f"Signup error: {e}")
-        return jsonify({"message": "アカウント作成に失敗しました"}), 500
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 def _validate_signup_data(data):
     return all([

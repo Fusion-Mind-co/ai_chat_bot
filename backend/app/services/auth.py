@@ -208,7 +208,8 @@ class AuthService:
                             monthly_cost,
                             chat_history_max_length,
                             input_text_length,
-                            sortorder
+                            sortorder,
+                            selectedmodel
                         ) VALUES (
                             %s, %s, 'Free', NOW(), NOW(),
                             NULL,  
@@ -216,7 +217,8 @@ class AuthService:
                             0,
                             1000,
                             200,
-                            'created_at ASC'
+                            'created_at ASC',
+                            'gpt-3.5-turbo'
                         )
                     """, (email, name))
                 

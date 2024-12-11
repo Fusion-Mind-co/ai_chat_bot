@@ -32,34 +32,6 @@ class SubscriptionService:
                 finally:
                     print("=== サブスクリプション処理終了 ===\n")
 
-    # Freeプランのリセットを行う関数
-    @staticmethod
-    def reset_free_plan(cursor, conn):
-        """Freeプランのリセット処理"""
-        cursor.execute("""
-            SELECT email, plan
-            FROM user_account
-            WHERE 
-                next_process_date <= NOW()
-                AND next_process_type = %s
-        """, ('free',))
-        free_users = cursor.fetchall()
-        print(f"Freeプランリセット対象ユーザー数: {len(free_users)}")
-
-        for user in free_users:
-            try:
-                cursor.execute("""
-                    UPDATE user_account 
-                    SET 
-                        monthly_cost = 0,
-                        next_process_date = NOW() + INTERVAL %s
-                    WHERE email = %s
-                """, (Config.get_next_process_interval(), user['email']))
-                conn.commit()
-            except Exception as e:
-                print(f"Freeプランリセットエラー: {e}")
-                conn.rollback()
-
 
     @staticmethod
     def process_cancellations(cursor, conn):
@@ -96,7 +68,8 @@ class SubscriptionService:
                         next_process_type = NULL,
                         next_process_date = NULL,
                         customer_id = NULL,
-                        monthly_cost = 0
+                        monthly_cost = NULL,
+                        selectedmodel = 'gpt-3.5-turbo'
                     WHERE email = %s
                 """, (user['email'],))
                 
@@ -149,17 +122,6 @@ class SubscriptionService:
                     amount
                 )
 
-                # 支払い記録の作成
-                SubscriptionService.create_payment_record(
-                    cursor, 
-                    user['email'], 
-                    user['plan'], 
-                    amount, 
-                    'auto_subscription', 
-                    transaction_id, 
-                    '定期支払い' if success else f'支払い失敗: {error_message}'
-                )
-
                 if success:
                     # 支払い成功時の処理
                     cursor.execute("""
@@ -170,22 +132,8 @@ class SubscriptionService:
                             monthly_cost = 0
                         WHERE email = %s
                     """, (Config.get_next_process_interval(), user['email']))
-                else:
-                    print(f"支払い失敗: {user['email']} をFreeプランに変更")
-                    # 支払い失敗時の処理を改善
-                    cursor.execute("""
-                        UPDATE user_account 
-                        SET 
-                            plan = 'Free',
-                            monthly_cost = 0,
-                            next_process_type = NULL,
-                            next_process_date = NULL,
-                            customer_id = NULL
-                        WHERE email = %s
-                        RETURNING *
-                    """, (user['email'],))
-                    
-                    # 失敗記録を作成（メッセージを日本語化）
+
+                    # 成功時の支払い記録
                     SubscriptionService.create_payment_record(
                         cursor, 
                         user['email'], 
@@ -193,7 +141,32 @@ class SubscriptionService:
                         amount, 
                         'auto_subscription', 
                         transaction_id, 
-                        '自動支払いに失敗したため、無料プランに変更されました。\n新たに有料プランに加入するには、お支払い情報の再登録が必要です。'
+                        '定期支払い'
+                    )
+                else:
+                    print(f"支払い失敗: {user['email']} をFreeプランに変更")
+                    # 支払い失敗時の処理
+                    cursor.execute("""
+                        UPDATE user_account 
+                        SET 
+                            plan = 'Free',
+                            monthly_cost = 0,
+                            next_process_type = NULL,
+                            next_process_date = NULL,
+                            customer_id = NULL,
+                            selectedmodel = 'gpt-3.5-turbo'
+                        WHERE email = %s
+                    """, (user['email'],))
+                    
+                    # 失敗時の支払い記録（金額をNULLに設定）
+                    SubscriptionService.create_payment_record(
+                        cursor, 
+                        user['email'], 
+                        'Free',  # プランをFreeに設定
+                        None,    # 金額をNULLに設定
+                        'auto_subscription', 
+                        transaction_id, 
+                        '支払い失敗　フリープランに変更'  
                     )
 
                 conn.commit()

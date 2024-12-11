@@ -39,6 +39,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
   // sign_up.dartの修正版
 
+  // sign_up.dart の signup 関数を修正
+
   Future<void> signup() async {
     try {
       if (!isEmailValid || !isPasswordValid) {
@@ -50,8 +52,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
       // メールアドレスの重複チェック
       final checkEmailUrl = Uri.parse('$serverUrl/check_email');
-      print('チェックするURL: $checkEmailUrl'); // URLを確認するためのログ
-
       final checkResponse = await http.post(
         checkEmailUrl,
         headers: {'Content-Type': 'application/json'},
@@ -60,10 +60,6 @@ class _SignUpPageState extends State<SignUpPage> {
         }),
       );
 
-      print('サーバーレスポンス: ${checkResponse.statusCode}'); // ステータスコードの確認
-      print('レスポンスボディ: ${checkResponse.body}'); // レスポンスの中身を確認
-
-      // メールのチェック処理の結果を確認
       if (checkResponse.statusCode != 200) {
         setState(() {
           try {
@@ -80,8 +76,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
       // アカウント登録処理
       final signupUrl = Uri.parse('$serverUrl/signup');
-      print('サインアップURL: $signupUrl'); // URLを確認するためのログ
-
       final signupResponse = await http.post(
         signupUrl,
         headers: {'Content-Type': 'application/json'},
@@ -89,12 +83,10 @@ class _SignUpPageState extends State<SignUpPage> {
           'email': emailController.text,
           'username': usernameController.text,
           'password': passwordController.text,
-          'plan': 'Free', // デフォルトプランを追加
+          'plan': 'Free',
+          'selected_model': 'gpt-3.5-turbo', // Freeプランのデフォルトモデルを指定
         }),
       );
-
-      print('サインアップレスポンス: ${signupResponse.statusCode}');
-      print('サインアップレスポンスボディ: ${signupResponse.body}');
 
       if (signupResponse.statusCode == 200) {
         // グローバル変数を更新

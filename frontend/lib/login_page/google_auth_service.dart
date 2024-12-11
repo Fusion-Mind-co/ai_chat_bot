@@ -3,7 +3,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../globals.dart';
-
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class GoogleAuthService {
@@ -29,10 +28,7 @@ class GoogleAuthService {
         if (savedDate != null) {
           final difference = DateTime.now().difference(savedDate);
           Duration expirationDuration =
-              LoginExpiration.getGoogleLoginExpiration();
-
-          print('現在の${LoginExpiration.isProduction ? "本番" : "テスト"}環境設定:');
-          print(LoginExpiration.getCurrentSettings());
+              LoginExpiration.getLoginExpiration();
 
           if (difference <= expirationDuration) {
             globalEmail = savedEmail;

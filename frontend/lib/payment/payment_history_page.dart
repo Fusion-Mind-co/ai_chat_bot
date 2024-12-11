@@ -45,6 +45,41 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
     }
   }
 
+  // 履歴アイテムのウィジェットを作成する関数
+  Widget _buildHistoryItem(Map<String, dynamic> record) {
+    final date = DateTime.parse(record['processed_date']);
+    final amount = record['amount'];
+    final message = record['message'] ?? '';
+    final isFailure = message.contains('失敗');
+
+    return ListTile(
+      title: Text(
+        message,
+        style: TextStyle(
+          color: isFailure ? Colors.red : Colors.black87,
+          fontWeight: isFailure ? FontWeight.normal : FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        DateFormat('yyyy/MM/dd HH:mm').format(date),
+        style: TextStyle(
+          color: Colors.black54,
+        ),
+      ),
+      trailing: (amount != null && !isFailure) // 金額がnullでない かつ 失敗でない場合のみ表示
+          ? Text(
+              '¥${NumberFormat("#,###").format(amount)}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+                fontSize: 16,
+              ),
+            )
+          : null,
+    );
+  }
+// payment_history_page.dart のListTile部分を修正
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,11 +101,25 @@ class _PaymentHistoryPageState extends State<PaymentHistoryPage> {
                     final record = _history[index];
                     final date = DateTime.parse(record['processed_date']);
                     final amount = record['amount'];
-                    
+                    final message = record['message'] ?? '';
+
+                    // 支払い失敗または解約の場合は金額を表示しない
+                    final shouldShowAmount = amount != null &&
+                        !message.contains('失敗') &&
+                        !message.contains('解約');
+
                     return ListTile(
-                      title: Text(record['message'] ?? ''),
-                      subtitle: Text(DateFormat('yyyy/MM/dd HH:mm').format(date)),
-                      trailing: amount > 0
+                      title: Text(
+                        message,
+                        style: TextStyle(
+                          color: message.contains('失敗')
+                              ? Colors.red
+                              : Colors.black,
+                        ),
+                      ),
+                      subtitle:
+                          Text(DateFormat('yyyy/MM/dd HH:mm').format(date)),
+                      trailing: shouldShowAmount
                           ? Text(
                               '¥${amount.toString()}',
                               style: TextStyle(

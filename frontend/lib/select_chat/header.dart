@@ -20,7 +20,7 @@ AppBar Header(
 ) {
   return AppBar(
     title: Column(
-      crossAxisAlignment: CrossAxisAlignment.start, 
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'ChatGPT bot',
@@ -30,11 +30,11 @@ AppBar Header(
           ),
         ),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
               child: Align(
-                alignment: Alignment.centerLeft, 
+                alignment: Alignment.centerLeft,
                 child: Text(
                   "${selectedModel}",
                   style: TextStyle(
@@ -46,9 +46,9 @@ AppBar Header(
             ),
             Expanded(
               child: Align(
-                alignment: Alignment.centerRight, 
+                alignment: Alignment.centerLeft,
                 child: Text(
-                  "${globalPlan}",
+                  "${chatGPT_MODEL}", // selectedModelの代わりにグローバル変数を使用
                   style: TextStyle(
                     fontSize: 12,
                     color: const Color.fromARGB(255, 113, 113, 113),
