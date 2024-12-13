@@ -10,25 +10,15 @@ class CustomModal {
     bool isDarkMode,
     Function toggleTheme,
     Function changeUserName,
-    int maxLength,
-    String selectedModel,
     Function onModelChange,
-    Function changeChatHistoryMaxLength,
-    Function changeInputTextLength,
-    int inputTextLength,
     Function logout,
   ) async {
     TextEditingController userNameController =
         TextEditingController(text: global_user_name);
 
-    TextEditingController chatHistoryMaxLengthController =
-        TextEditingController(text: maxLength.toString());
-
-    TextEditingController inputTextLengthController =
-        TextEditingController(text: inputTextLength.toString());
 
     String? errorMessage;
-    String currentModel = selectedModel;
+
 
     final ThemeData parentTheme =
         isDarkMode ? ThemeData.dark() : ThemeData.light();
@@ -44,10 +34,6 @@ class CustomModal {
             final ThemeData parentTheme =
                 currentMode ? ThemeData.dark() : ThemeData.light();
 
-            if (globalPlan == 'Free' && currentModel != 'gpt-3.5-turbo') {
-              currentModel = 'gpt-3.5-turbo';
-              onModelChange(currentModel);
-            }
 
             List<String> availableModels =
                 globalPlan == 'Standard' ? GPT_Models : ['gpt-3.5-turbo'];
@@ -97,14 +83,14 @@ class CustomModal {
                               ),
                             ),
                           DropdownButton<String>(
-                            value: currentModel,
+                            value: globalSelectedModel,
                             isExpanded: true,
                             onChanged: globalPlan == 'Standard'
                                 ? (String? newValue) {
                                     if (newValue != null) {
                                       setState(() {
-                                        currentModel = newValue;
-                                        chatGPT_MODEL = newValue;
+                                        globalSelectedModel = newValue;
+                                        globalSelectedModel = newValue;
                                       });
                                       onModelChange(newValue);
                                     }

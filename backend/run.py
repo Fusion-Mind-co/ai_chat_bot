@@ -8,6 +8,7 @@ from app.services.subscription import SubscriptionService
 from waitress import serve
 from app.config import Config
 
+
 app = create_app()
 
 # スケジューラーの実行状態を管理するフラグ

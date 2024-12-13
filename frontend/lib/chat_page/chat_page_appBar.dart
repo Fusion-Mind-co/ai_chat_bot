@@ -71,7 +71,7 @@ class ChatPageAppbarState extends State<ChatPageAppbar> {
       title: TextField(
         controller: _titleController,
         decoration: InputDecoration(
-          labelText: _hasError ? 'エラー: タイトルを入力してください' : '$chatGPT_MODEL ',
+          labelText: _hasError ? 'エラー: タイトルを入力してください' : '$globalSelectedModel ',
           labelStyle: TextStyle(
             color: _hasError ? Colors.red : null,
           ),

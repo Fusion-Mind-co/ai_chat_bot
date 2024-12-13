@@ -15,24 +15,45 @@ import 'package:chatbot/select_chat/option_modal.dart';
 import 'package:chatbot/select_chat/select_chat_body.dart';
 import 'package:chatbot/select_chat/header.dart';
 
-String chatGPT_MODEL = "gpt-4o-mini";
-
 class App extends StatefulWidget {
   @override
   AppState createState() => AppState();
 }
 
 class AppState extends State<App> {
+  static AppState? instance;
+
+  @override
+  void initState() {
+    super.initState();
+    instance = this;
+  }
+
+  @override
+  void dispose() {
+    // インスタンスのクリーンアップ
+    if (instance == this) {
+      instance = null;
+    }
+    super.dispose();
+  }
+
+  // loadAndFetchConfigAndCostをグローバルに
+  static Future<void> refreshState() async {
+    if (instance != null) {
+      await instance!.loadAndFetchConfigAndCost();
+    }
+  }
+
   bool _isDarkMode = false;
 
   final GoogleAuthService _googleAuthService = GoogleAuthService();
 
-  final storage = FlutterSecureStorage(); 
+  final storage = FlutterSecureStorage();
   TextEditingController userNameController = TextEditingController();
   TextEditingController chatHistoryMaxLengthController =
       TextEditingController();
-  TextEditingController inputTextLengthController =
-      TextEditingController(); // 新しいコントローラーを追加
+  TextEditingController inputTextLengthController = TextEditingController();
 
   // ユーザー情報のロード
   Future<void> loadAndFetchConfigAndCost() async {
@@ -48,27 +69,30 @@ class AppState extends State<App> {
 
       if (responseData is Map) {
         setState(() {
-          // PostgreSQLから取得したデータでグローバル変数を更新
+          // ソート
           globalSortOrder = responseData['sortOrder'] ?? 'created_at ASC';
-          chatGPT_MODEL = responseData['selectedModel'] ?? 'gpt-4o-mini';
+          // GPTモデル
+          globalSelectedModel =
+              responseData['selectedModel'] ?? 'gpt-3.5-turbo';
+          // ユーザーネーム
           global_user_name = responseData['user_name'] ?? '';
+          // chat履歴文字数
           chatHistoryMaxLength =
               responseData['chat_history_max_length'] ?? 1000;
+          // 入力文字数
           input_text_length = responseData['input_text_length'] ?? 200;
+          // 月間制限コスト
           globalMonthlyCost = responseData['monthly_cost'] ?? 0.0;
+          // プラン
           globalPlan = responseData['plan'] ?? 'Free';
-
-
-          // UIコントローラの更新
-          chatHistoryMaxLengthController.text = chatHistoryMaxLength.toString();
-          inputTextLengthController.text = input_text_length.toString();
+          // ライト/ダークモード
           _isDarkMode = responseData['isDarkMode'] ?? false;
         });
 
         // ロードした内容を表示
         print('ロードした設定:');
         print('  Sort Order: \ $globalSortOrder');
-        print('  Model: \ $chatGPT_MODEL');
+        print('  Model: \ $globalSelectedModel');
         print('  User Name: \ $global_user_name');
         print('  Chat History Max Length: \ $chatHistoryMaxLength');
         print('  Input Text Length: \ $input_text_length');
@@ -86,16 +110,14 @@ class AppState extends State<App> {
     print('設定とコストのロード終了');
   }
 
-  //==================================================
-
   void onModelChange(String newModel) {
     print('onModelChange関数　モデル変更');
     setState(() {
-      chatGPT_MODEL = newModel;
+      globalSelectedModel = newModel;
     });
     updateUserData(
-        'model', {'email': globalEmail, 'selectedModel': chatGPT_MODEL});
-    print("chatGPT_MODEL = ${chatGPT_MODEL}");
+        'model', {'email': globalEmail, 'selectedModel': globalSelectedModel});
+    print("chatGPT_MODEL = ${globalSelectedModel}");
   }
 
   void changeInputTextLength(int newLength) {
@@ -137,10 +159,6 @@ class AppState extends State<App> {
     }
   }
 
-  //====================================================================
-
-  //====================================================================
-
   // ダークモードの切り替え
   void toggleTheme() {
     print('toggleTheme関数起動　ダークモードの切り替え');
@@ -164,10 +182,6 @@ class AppState extends State<App> {
         'user_name', {'email': globalEmail, 'user_name': global_user_name});
     print("ユーザーネーム = ${newUserName}");
   }
-
-  //====================================================================
-
-  //====================================================================
 
   Future<void> logout() async {
     print('ログアウト処理を開始します');
@@ -210,27 +224,23 @@ class AppState extends State<App> {
   }
 
   @override
-Widget build(BuildContext context) {
-  final themeData = _isDarkMode ? ThemeData.dark() : ThemeData.light();
-  
-  return MaterialApp(  // Theme widgetではなくMaterialAppを使用
-    theme: themeData.copyWith(
-      dialogTheme: DialogTheme(
-        backgroundColor: themeData.colorScheme.surface,
+  Widget build(BuildContext context) {
+    final themeData = _isDarkMode ? ThemeData.dark() : ThemeData.light();
+
+    return MaterialApp(
+      // Theme widgetではなくMaterialAppを使用
+      theme: themeData.copyWith(
+        dialogTheme: DialogTheme(
+          backgroundColor: themeData.colorScheme.surface,
+        ),
       ),
-    ),
-    home: Scaffold(
+      home: Scaffold(
         appBar: Header(
           context,
           _isDarkMode,
           toggleTheme,
           changeUserName,
-          chatHistoryMaxLength,
-          chatGPT_MODEL,
           onModelChange,
-          changeChatHistoryMaxLength,
-          changeInputTextLength,
-          input_text_length,
           logout,
         ),
         body: SelectChat(loadingConfig: loadAndFetchConfigAndCost),

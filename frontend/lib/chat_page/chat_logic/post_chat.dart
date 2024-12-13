@@ -23,7 +23,7 @@ Future<Stream<String>> postChatGPTStream(String text) async {
     final chatHistory = getChatHistory();
 
     final requestBody = json.encode({
-      "model": chatGPT_MODEL,
+      "model": globalSelectedModel,
       "messages": chatHistory,
       "max_tokens": answer_GPT_token_length,
       "stream": true,
@@ -108,7 +108,7 @@ Future<String?> postChatGPT(String text) async {
     print('postChatGPT: チャット履歴取得完了: $chatHistory'); // デバッグポイント
 
     final requestBody = json.encode({
-      "model": chatGPT_MODEL,
+      "model": globalSelectedModel,
       "messages": chatHistory,
       "max_tokens": answer_GPT_token_length,
     });
@@ -149,7 +149,7 @@ Future<String?> postChatGPT(String text) async {
 
       int user_text_length = combinedMessages.length;
       int gpt_text_length = answer.length;
-      CostManagement(userTokenCount, GPTtokenCount, chatGPT_MODEL,
+      CostManagement(userTokenCount, GPTtokenCount, globalSelectedModel,
           user_text_length, gpt_text_length);
 
       addMessage("assistant", answer);

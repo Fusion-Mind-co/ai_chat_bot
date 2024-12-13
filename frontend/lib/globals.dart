@@ -1,9 +1,25 @@
 // globals.dart
 
-// グローバル化管理
 import 'package:chatbot/database/sqlite_database.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
+import 'package:chatbot/database/postgreSQL_logic.dart';  // updateUserData用
+import 'package:chatbot/app.dart';  // AppState用
+
+
+
+
+
+
+
+
+
+// ===================================================================
+
+
+
+
+
 
 String? global_DB_name;
 String? globalEmail;

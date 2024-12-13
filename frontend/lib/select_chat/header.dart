@@ -1,7 +1,7 @@
 // header.dart
+
 import 'package:flutter/material.dart';
 import 'package:chatbot/app.dart';
-
 import 'package:chatbot/select_chat/option_modal.dart';
 import 'package:chatbot/globals.dart'; // グローバル変数をインポート
 
@@ -10,12 +10,7 @@ AppBar Header(
   bool isDarkMode,
   Function toggleTheme,
   Function changeUserName,
-  int maxLength,
-  String selectedModel,
   Function onModelChange,
-  Function changeChatHistoryMaxLength,
-  Function changeInputTextLength, // 新しい関数を追加
-  int inputTextLength, // 新しい引数を追加
   Function logout,
 ) {
   return AppBar(
@@ -36,7 +31,7 @@ AppBar Header(
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  "${selectedModel}",
+                  "${globalPlan}",
                   style: TextStyle(
                     fontSize: 12,
                     color: const Color.fromARGB(255, 113, 113, 113),
@@ -48,7 +43,7 @@ AppBar Header(
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  "${chatGPT_MODEL}", // selectedModelの代わりにグローバル変数を使用
+                  "${globalSelectedModel}", // selectedModelの代わりにグローバル変数を使用
                   style: TextStyle(
                     fontSize: 12,
                     color: const Color.fromARGB(255, 113, 113, 113),
@@ -68,12 +63,7 @@ AppBar Header(
           isDarkMode,
           toggleTheme,
           changeUserName,
-          maxLength,
-          selectedModel,
           onModelChange,
-          changeChatHistoryMaxLength,
-          changeInputTextLength, // 新しい関数を追加
-          inputTextLength, // 新しい引数を追加
           logout,
         );
       },

@@ -84,7 +84,7 @@ class PaymentPageState extends State<PaymentPage> {
 
           // モデルの更新を追加
           if (responseData['selectedmodel'] != null) {
-            chatGPT_MODEL = responseData['selectedmodel']; // グローバル変数を更新
+            globalSelectedModel = responseData['selectedmodel']; // グローバル変数を更新
           }
         });
 
@@ -97,6 +97,8 @@ class PaymentPageState extends State<PaymentPage> {
 
         // 最新のユーザー状態を取得
         await _fetchUserStatus();
+        // UIの更新
+        await AppState.refreshState();
       } else {
         final errorData = jsonDecode(response.body);
         throw Exception(errorData['error'] ?? 'プランの更新に失敗しました');
@@ -136,6 +138,9 @@ class PaymentPageState extends State<PaymentPage> {
     // 2. 決済実行
     final paymentIntentData = jsonDecode(response.body);
     await _processPayment(paymentIntentData);
+
+    // UIの更新
+    await AppState.refreshState();
   }
 
   // _processPaymentメソッドを追加
@@ -204,6 +209,9 @@ class PaymentPageState extends State<PaymentPage> {
         );
         // 状態を更新
         _fetchUserStatus();
+        // UIの更新
+        await AppState.refreshState();
+        
       } else {
         throw Exception('解約予約に失敗しました');
       }
@@ -248,26 +256,26 @@ class PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  Future<void> createSubscription() async {
-    final url = Uri.parse('https://your_server_url/create-subscription');
-    final response = await http.post(url,
-        body: jsonEncode({'email': 'user_email'}),
-        headers: {'Content-Type': 'application/json'});
+  // Future<void> createSubscription() async {
+  //   final url = Uri.parse('https://your_server_url/create-subscription');
+  //   final response = await http.post(url,
+  //       body: jsonEncode({'email': 'user_email'}),
+  //       headers: {'Content-Type': 'application/json'});
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final clientSecret = data['client_secret'];
+  //   if (response.statusCode == 200) {
+  //     final data = jsonDecode(response.body);
+  //     final clientSecret = data['client_secret'];
 
-      await Stripe.instance.confirmPayment(
-        paymentIntentClientSecret: clientSecret,
-        data: PaymentMethodParams.card(
-          paymentMethodData: PaymentMethodData(),
-        ),
-      );
-    } else {
-      print('Error creating subscription');
-    }
-  }
+  //     await Stripe.instance.confirmPayment(
+  //       paymentIntentClientSecret: clientSecret,
+  //       data: PaymentMethodParams.card(
+  //         paymentMethodData: PaymentMethodData(),
+  //       ),
+  //     );
+  //   } else {
+  //     print('Error creating subscription');
+  //   }
+  // }
 
   Future<void> _fetchUserStatus() async {
     try {
@@ -281,7 +289,7 @@ class PaymentPageState extends State<PaymentPage> {
 
           // モデルの更新を追加
           if (userData['selectedmodel'] != null) {
-            selectedModel = userData['selectedmodel'];
+            globalSelectedModel = userData['selectedmodel'];
           }
 
           nextProcessDate = userData['next_process_date'] != null

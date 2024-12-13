@@ -4,14 +4,6 @@ from ..database import get_db_connection
 class UserService:
     @staticmethod
     def update_user_data(column, value, email, increment=False):
-        """
-        ユーザーデータの更新
-        Args:
-            column (str): 更新するカラム名
-            value: 新しい値
-            email (str): ユーザーのメールアドレス
-            increment (bool): 値を増分するかどうか
-        """
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
@@ -39,7 +31,6 @@ class UserService:
 
     @staticmethod
     def get_user_config(email):
-        """ユーザー設定の取得"""
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
