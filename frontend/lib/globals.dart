@@ -14,7 +14,7 @@ double globalMaxMonthlyCost = 0;
 String globalSortOrder = 'created_at ASC';
 int chatHistoryMaxLength = 1000; // 初期値を設定
 int input_text_length = 200;
-String selectedModel = 'gpt-3.5-turbo';
+String globalSelectedModel = 'gpt-3.5-turbo';
 
 late SQLiteDatabase db;
 

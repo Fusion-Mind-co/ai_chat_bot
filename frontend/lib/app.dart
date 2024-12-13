@@ -27,7 +27,7 @@ class AppState extends State<App> {
 
   final GoogleAuthService _googleAuthService = GoogleAuthService();
 
-  final storage = FlutterSecureStorage(); // 安全なストレージを利用
+  final storage = FlutterSecureStorage(); 
   TextEditingController userNameController = TextEditingController();
   TextEditingController chatHistoryMaxLengthController =
       TextEditingController();

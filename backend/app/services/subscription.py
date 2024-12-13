@@ -15,13 +15,11 @@ class SubscriptionService:
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 try:
-                    # 1. Freeプランのリセット処理
-                    SubscriptionService.reset_free_plan(cursor, conn)
 
-                    # 2. 解約処理
+                    # 1. 解約処理
                     SubscriptionService.process_cancellations(cursor, conn)
 
-                    # 4. 定期支払い処理
+                    # 2. 定期支払い処理
                     SubscriptionService.process_regular_payments(cursor, conn)
 
                     print("\n全処理完了")
