@@ -1,10 +1,14 @@
 # app/services/subscription.py
 from datetime import datetime
+from flask import current_app
 from ..database import get_db_connection
 from .stripe import StripeService
 from ..config import Config
+from .websocket import WebSocketService
+
 
 class SubscriptionService:
+
 
     # サブスクリプションの自動チェックと処理を行う関数
     @staticmethod
@@ -53,12 +57,11 @@ class SubscriptionService:
                     cursor, 
                     user['email'], 
                     user['plan'], 
-                    0,  # 金額は0
-                    'auto_cancellation',  # 処理区分を解約に
+                    0,
+                    'auto_cancellation',
                     message='プラン解約'
                 )
                 
-                # ユーザーアカウントをFreeプランに更新し、関連フィールドをnullに
                 cursor.execute("""
                     UPDATE user_account 
                     SET 
@@ -73,6 +76,9 @@ class SubscriptionService:
                 
                 conn.commit()
                 print(f"解約処理完了: {user['email']} をFreeプランに変更")
+
+                # WebSocket通知を新しいサービスを使用して送信
+                WebSocketService.notify_user_update(user['email'])
                 
             except Exception as e:
                 print(f"解約処理エラー: {e}")
@@ -168,6 +174,8 @@ class SubscriptionService:
                     )
 
                 conn.commit()
+                # FlutterのUI更新通知
+                WebSocketService.notify_user_update(user['email'])
 
             except Exception as e:
                 print(f"支払い処理エラー: {e}")

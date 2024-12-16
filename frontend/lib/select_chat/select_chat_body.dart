@@ -1,4 +1,6 @@
+import 'package:chatbot/app.dart';
 import 'package:chatbot/database/sqlite_database.dart';
+import 'package:chatbot/socket_service.dart';
 import 'package:flutter/material.dart';
 import 'package:chatbot/chat_page/chat_page.dart';
 import 'package:chatbot/database/postgreSQL_logic.dart';
@@ -23,6 +25,42 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     initializeApp();
+
+    // WebSocketのリスナーを追加
+    SocketService.addStatusUpdateListener(_handleStatusUpdate);
+  }
+
+  // WebSocketイベントのハンドラー
+void _handleStatusUpdate(dynamic data) async {
+  if (data['email'] == globalEmail && mounted) {
+    print('SelectChat: ユーザー状態の更新を検知');
+    try {
+      // AppStateのrefreshStateを使用して状態を更新
+      await AppState.refreshState();
+      
+      // 状態更新後にチャット一覧を更新
+      await getSelectChat();
+      
+      // 更新通知
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('設定が更新されました'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('状態更新中にエラーが発生: $e');
+    }
+  }
+}
+
+  @override
+  void dispose() {
+    SocketService.removeStatusUpdateListener(_handleStatusUpdate);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> initializeApp() async {
@@ -48,26 +86,38 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
   }
 
   @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       getSelectChat();
     }
   }
 
-  Future<void> getSelectChat() async {
-    print('getSelectChat関数 開始');
+ // チャット一覧の取得を修正
+Future<void> getSelectChat() async {
+  print('getSelectChat関数 開始');
+  try {
     final List<Map<String, dynamic>> selectData = 
         await _database.getAllSelectChat();
-    setState(() {
-      _selectData = selectData;
-    });
-    print('getSelectChat関数 終了');
+    
+    if (mounted) {
+      setState(() {
+        _selectData = selectData;
+      });
+    }
+  } catch (e) {
+    print('チャット一覧の取得でエラー: $e');
+  }
+  print('getSelectChat関数 終了');
+}
+
+   // グローバル状態の更新を行うヘルパーメソッド
+  void _updateGlobalState() {
+    // プランに応じたUI要素の更新
+    if (globalPlan == 'Free') {
+      // Freeプラン用のUI更新ロジック
+    } else {
+      // 有料プラン用のUI更新ロジック
+    }
   }
 
   Future<void> newChat() async {

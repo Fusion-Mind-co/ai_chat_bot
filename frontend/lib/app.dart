@@ -2,12 +2,11 @@
 
 import 'dart:convert';
 import 'package:chatbot/login_page/google_auth_service.dart';
+import 'package:chatbot/socket_service.dart';
 import 'package:http/http.dart' as http; // httpパッケージのインポート
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
-
 import 'package:chatbot/database/postgreSQL_logic.dart';
 import 'package:chatbot/globals.dart';
 import 'package:chatbot/login_page/login_page.dart';
@@ -27,6 +26,9 @@ class AppState extends State<App> {
   void initState() {
     super.initState();
     instance = this;
+
+    // WebSocket接続の初期化
+    SocketService.initSocket();
   }
 
   @override
@@ -35,6 +37,7 @@ class AppState extends State<App> {
     if (instance == this) {
       instance = null;
     }
+    SocketService.dispose();
     super.dispose();
   }
 

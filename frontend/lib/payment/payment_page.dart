@@ -4,13 +4,14 @@ import 'dart:async';
 import 'package:chatbot/app.dart';
 import 'package:chatbot/globals.dart';
 import 'package:chatbot/payment/payment_history_page.dart';
+import 'package:chatbot/socket_service.dart';
 import 'package:flutter/material.dart' hide Card; // Materialの'Card'を隠す
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart' as material show Card;
-import 'package:intl/intl.dart'; // Materialの'Card'を別名でインポート
+import 'package:intl/intl.dart';
 
 class PaymentPage extends StatefulWidget {
   final bool isInitialAccess; // 初回アクセスフラグを追加
@@ -22,7 +23,6 @@ class PaymentPage extends StatefulWidget {
 }
 
 class PaymentPageState extends State<PaymentPage> {
-  Timer? _refreshTimer; // タイマー変数を上部に移動
   DateTime? nextProcessDate;
   String? nextProcessType;
   String? nextPlan;
@@ -32,17 +32,32 @@ class PaymentPageState extends State<PaymentPage> {
   void initState() {
     super.initState();
     _fetchUserStatus();
-    // 定期的な状態更新を開始（30秒ごと）
-    _refreshTimer = Timer.periodic(Duration(seconds: 30), (_) {
+
+    // WebSocketのリスナーを追加
+    SocketService.addStatusUpdateListener(_handleStatusUpdate);
+  }
+
+  // WebSocketイベントのハンドラーを定義
+  void _handleStatusUpdate(dynamic data) async {
+    if (data['email'] == globalEmail && mounted) {
+      await _fetchUserStatus();
+
+      // UIに通知
       if (mounted) {
-        _fetchUserStatus();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('アカウント状態が更新されました'),
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
-    });
+    }
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    // WebSocketのリスナーを削除
+    SocketService.removeStatusUpdateListener(_handleStatusUpdate);
     super.dispose();
   }
 
@@ -211,7 +226,6 @@ class PaymentPageState extends State<PaymentPage> {
         _fetchUserStatus();
         // UIの更新
         await AppState.refreshState();
-        
       } else {
         throw Exception('解約予約に失敗しました');
       }
