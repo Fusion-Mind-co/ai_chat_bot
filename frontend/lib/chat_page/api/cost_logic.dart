@@ -51,18 +51,5 @@ Future<void> CostManagement(
     'monthly_cost': nowTotalCost, // 加算するコスト
   });
 
-  print('saveCostDataLocally関数 を呼び出す');
-  // コストデータのローカルデータベースへの保存
-  await db.saveCostDataLocally(
-    nowTotalCost,
-    user_text_length,
-    inputTokens,
-    inCost,
-    gpt_text_length,
-    outputTokens,
-    outCost,
-    model,
-  );
-
   print('今回のコスト : $nowTotalCost');
 }

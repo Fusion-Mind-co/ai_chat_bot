@@ -78,7 +78,8 @@ Future<Map<String, dynamic>?> fetchCostPlan() async {
   }
 }
 
-// MonthlyCostのみ取得
+// MonthlyCost取得
+// =========================================現在未使用===============================================
 Future<double?> fetchMonthlyCost() async {
   if (globalEmail == null) {
     print('emailが指定されていません');
@@ -106,6 +107,7 @@ Future<double?> fetchMonthlyCost() async {
     return null;
   }
 }
+// =========================================現在未使用===============================================
 
 Future<void> updateMonthlyCost(double additionalCost) async {
   final url = Uri.parse('$serverUrl/update/monthlycost');

@@ -29,7 +29,7 @@ class ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _initializeChat();
-    updateMonthlyCost();
+
   }
 
   Future<void> _initializeChat() async {
@@ -39,6 +39,8 @@ class ChatPageState extends State<ChatPage> {
     await _loadChatHistory();
   }
 
+
+// =========================================現在未使用===============================================
   Future<void> updateMonthlyCost() async {
     double? newCost = await fetchMonthlyCost(); // 非同期処理を完了させる
     if (newCost != null) {
@@ -47,6 +49,8 @@ class ChatPageState extends State<ChatPage> {
       });
     }
   }
+  
+// =========================================現在未使用===============================================
 
   Future<void> _loadChatHistory() async {
     await loadChatHistoryFromDB(widget.chatId);

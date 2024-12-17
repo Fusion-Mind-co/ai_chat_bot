@@ -79,7 +79,7 @@ class Config:
         'gpt-3.5-turbo',
         'gpt-4o-mini'
     ]
-    DEFAULT_MODEL = 'gpt-4o-mini'
+    DEFAULT_MODEL = 'gpt-3.5-turbo'
 
 class DevelopmentConfig(Config):
     DEBUG = True

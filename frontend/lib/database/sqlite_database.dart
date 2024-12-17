@@ -59,21 +59,6 @@ class SQLiteDatabase {
         updated_at TEXT
       )""");
 
-    await db.execute("""
-      CREATE TABLE cost_data (
-        id INTEGER PRIMARY KEY, 
-        now_cost REAL, 
-        monthly_cost REAL, 
-        user_text_length INTEGER, 
-        user_token_count INTEGER, 
-        user_cost REAL, 
-        GPT_text_length INTEGER, 
-        GPT_token_count INTEGER, 
-        GPT_cost REAL, 
-        selectedModel TEXT, 
-        timestamp TEXT
-      )""");
-
     print("データベース ${global_DB_name}.db のテーブルを作成しました");
   }
 
@@ -202,37 +187,4 @@ class SQLiteDatabase {
     }
   }
 
-  // コストデータの保存
-  Future<void> saveCostDataLocally(
-    double nowTotalCost,
-    int userTextLength,
-    int inputTokens,
-    double inCost,
-    int gptTextLength,
-    int outputTokens,
-    double outCost,
-    String model,
-  ) async {
-    final db = await database;
-    try {
-      await db.insert(
-        'cost_data',
-        {
-          'now_cost': nowTotalCost,
-          'monthly_cost': globalMonthlyCost,
-          'user_text_length': userTextLength,
-          'user_token_count': inputTokens,
-          'user_cost': inCost,
-          'GPT_text_length': gptTextLength,
-          'GPT_token_count': outputTokens,
-          'GPT_cost': outCost,
-          'selectedModel': model,
-          'timestamp': DateTime.now().toString(),
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    } catch (e) {
-      print('saveCostDataLocallyでエラーが発生しました: $e');
-    }
-  }
 }
