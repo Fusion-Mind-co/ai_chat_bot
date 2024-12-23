@@ -10,10 +10,85 @@ from google.auth.transport import requests
 from ..services.email import EmailService
 from itsdangerous import URLSafeTimedSerializer 
 
+
 # シリアライザーの初期化
 s = URLSafeTimedSerializer(Config.SECRET_KEY)  
 
 class AuthService:
+
+    @staticmethod
+    def handle_google_login(google_data: dict) -> tuple[bool, str]:
+        """
+        Googleログインを処理し、必要に応じてユーザーを作成
+        
+        Args:
+            google_data (dict): email と name を含むdict
+            
+        Returns:
+            tuple[bool, str]: (成功したかどうか, メッセージ)
+        """
+        try:
+            email = google_data.get('email')
+            name = google_data.get('name', '')
+            
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            try:
+                cursor.execute("BEGIN")
+                
+                # 既存ユーザーの確認
+                cursor.execute("""
+                    SELECT * FROM user_account 
+                    WHERE email = %s
+                """, (email,))
+                
+                user = cursor.fetchone()
+                
+                if not user:
+                    # 新規ユーザーの作成
+                    cursor.execute("""
+                        INSERT INTO user_account (
+                            email, username, plan, created_at, last_login,
+                            next_process_date, next_process_type, monthly_cost,
+                            chat_history_max_length, input_text_length, sortorder,
+                            selectedmodel
+                        ) VALUES (
+                            %s, %s, 'Free', NOW(), NOW(),
+                            NULL, NULL, 
+                            0, 1000, 200, 'created_at ASC',
+                            'gpt-3.5-turbo'
+                        )
+                    """, (email, name))
+                    
+                    message = "アカウントを新規作成しました"
+                    
+                else:
+                    # 既存ユーザーの更新
+                    cursor.execute("""
+                        UPDATE user_account SET
+                            last_login = NOW(),
+                            login_attempts = 0
+                        WHERE email = %s
+                    """, (email,))
+                    message = "ログインしました"
+                
+                cursor.execute("COMMIT")
+                return True, message
+                
+            except Exception as e:
+                cursor.execute("ROLLBACK")
+                print(f"Database error: {e}")
+                return False, "データベースエラーが発生しました"
+                
+            finally:
+                cursor.close()
+                conn.close()
+                
+        except Exception as e:
+            print(f"Google login handling error: {e}")
+            return False, "サーバーエラーが発生しました"
+
     @staticmethod
     def verify_google_token(token: str) -> dict:
         """Googleトークンを検証し、ユーザー情報を取得"""
@@ -28,11 +103,26 @@ class AuthService:
             print(f"Googleトークン検証エラー: {e}")
             raise
 
+
     @staticmethod
-    def signup(email: str, username: str, password: str, plan: str = 'Free') -> tuple[bool, str]:
+    def signup(email: str, username: str, password: str, plan: str = 'Free', 
+            selected_model: str = 'gpt-3.5-turbo') -> tuple[bool, str]:
+        """
+        新規ユーザーの登録を処理
+        
+        Args:
+            email (str): ユーザーのメールアドレス
+            username (str): ユーザー名
+            password (str): パスワード
+            plan (str, optional): ユーザープラン. デフォルトは 'Free'
+            selected_model (str, optional): 選択されたモデル. デフォルトは 'gpt-3.5-turbo'
+        
+        Returns:
+            tuple[bool, str]: (成功したかどうか, メッセージ)
+        """
         try:
             # パスワードのハッシュ化
-            hashed_password = pbkdf2_sha256.hash(password)
+            password_hash = pbkdf2_sha256.hash(password)
             current_time = datetime.now()
             
             conn = get_db_connection()
@@ -40,37 +130,52 @@ class AuthService:
             
             try:
                 cursor.execute("BEGIN")
+                
+                # 新規ユーザーの作成
                 cursor.execute("""
                     INSERT INTO user_account (
                         email, 
                         username,
                         password_hash, 
                         plan,
-                        monthly_cost, 
-                        created_at, 
+                        selectedmodel,
+                        created_at,
                         last_login,
-                        next_process_date, 
-                        next_process_type
+                        next_process_date,
+                        next_process_type,
+                        monthly_cost,
+                        chat_history_max_length,
+                        input_text_length,
+                        sortorder
                     ) VALUES (
-                        %s, %s, %s, %s, 0.0, %s, %s,
-                        NULL, NULL
+                        %s, %s, %s, %s, %s, %s, %s,
+                        NULL, NULL,
+                        0, 1000, 200,
+                        'created_at ASC'
                     )
-                """, (email, username, hashed_password, plan,
-                    current_time, current_time))
-
+                """, (
+                    email, username, password_hash, plan,
+                    selected_model, current_time, current_time
+                ))
+                
                 cursor.execute("COMMIT")
-                return True, "アカウント作成成功"
-
+                return True, "アカウント作成に成功しました"
+                
             except Exception as e:
                 cursor.execute("ROLLBACK")
-                raise e
+                print(f"Database error during signup: {e}")
+                
+                if 'duplicate key' in str(e).lower():
+                    return False, "このメールアドレスは既に登録されています"
+                return False, "データベースエラーが発生しました"
+                
             finally:
                 cursor.close()
                 conn.close()
-
+                
         except Exception as e:
             print(f"Signup service error: {e}")
-            return False, str(e)
+            return False, "サーバーエラーが発生しました"
 
     @staticmethod
     def login(email, password):
@@ -136,6 +241,13 @@ class AuthService:
         except Exception as e:
             print(f"Password check error: {e}")
             return False, "認証エラーが発生しました"
+        
+    @staticmethod
+    def check_email_exists(email: str) -> bool:
+        """メールアドレスの重複チェック"""
+        query = "SELECT COUNT(*) as count FROM user_account WHERE email = %s"
+        result = execute_query(query, (email,))
+        return result and result[0]['count'] > 0
 
 
 
@@ -163,77 +275,3 @@ class AuthService:
         """, (email,))
     
     
-    @staticmethod
-    def handle_google_login(google_data: dict) -> tuple[bool, str]:
-        """
-        Googleログインを処理し、必要に応じてユーザーを作成
-        """
-        try:
-            email = google_data.get('email')
-            name = google_data.get('name', '')
-            google_id = google_data.get('sub')  # Googleの一意のID
-            
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            try:
-                cursor.execute("BEGIN")
-                
-                # 既存ユーザーの確認
-                cursor.execute("""
-                    SELECT * FROM user_account 
-                    WHERE email = %s
-                """, (email,))
-                user = cursor.fetchone()
-                
-                if user:
-                    # 既存ユーザーの更新
-                    cursor.execute("""
-                        UPDATE user_account SET
-                            last_login = NOW(),
-                            login_attempts = 0
-                        WHERE email = %s
-                    """, (email,))
-                else:
-                    # 新規ユーザーの作成
-                    cursor.execute("""
-                        INSERT INTO user_account (
-                            email,
-                            username,
-                            plan,
-                            created_at,
-                            last_login,
-                            next_process_date,
-                            next_process_type,
-                            monthly_cost,
-                            chat_history_max_length,
-                            input_text_length,
-                            sortorder,
-                            selectedmodel
-                        ) VALUES (
-                            %s, %s, 'Free', NOW(), NOW(),
-                            NULL,  
-                            NULL,  
-                            0,
-                            1000,
-                            200,
-                            'created_at ASC',
-                            'gpt-3.5-turbo'
-                        )
-                    """, (email, name))
-                
-                cursor.execute("COMMIT")
-                return True, "ログイン成功"
-                
-            except Exception as e:
-                cursor.execute("ROLLBACK")
-                raise
-                
-            finally:
-                cursor.close()
-                conn.close()
-                
-        except Exception as e:
-            print(f"Googleログイン処理エラー: {e}")
-            return False, str(e)
-  

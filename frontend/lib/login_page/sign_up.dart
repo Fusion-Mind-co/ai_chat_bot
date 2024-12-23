@@ -37,11 +37,9 @@ class _SignUpPageState extends State<SignUpPage> {
     });
   }
 
-  // sign_up.dartの修正版
-
-  // sign_up.dart の signup 関数を修正
 
   Future<void> signup() async {
+    print('signup関数実行');
     try {
       if (!isEmailValid || !isPasswordValid) {
         setState(() {
@@ -51,6 +49,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }
 
       // メールアドレスの重複チェック
+      print('メールアドレスの重複チェック　/check_email');
       final checkEmailUrl = Uri.parse('$serverUrl/check_email');
       final checkResponse = await http.post(
         checkEmailUrl,
@@ -75,6 +74,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }
 
       // アカウント登録処理
+      print('アカウント登録処理　/signup');
       final signupUrl = Uri.parse('$serverUrl/signup');
       final signupResponse = await http.post(
         signupUrl,
