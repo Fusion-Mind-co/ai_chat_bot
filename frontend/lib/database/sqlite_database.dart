@@ -1,3 +1,5 @@
+// database\sqlite_database.dart
+
 import 'package:chatbot/globals.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';

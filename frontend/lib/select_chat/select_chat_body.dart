@@ -31,30 +31,30 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
   }
 
   // WebSocketイベントのハンドラー
-void _handleStatusUpdate(dynamic data) async {
-  if (data['email'] == globalEmail && mounted) {
-    print('SelectChat: ユーザー状態の更新を検知');
-    try {
-      // AppStateのrefreshStateを使用して状態を更新
-      await AppState.refreshState();
-      
-      // 状態更新後にチャット一覧を更新
-      await getSelectChat();
-      
-      // 更新通知
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('設定が更新されました'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+  void _handleStatusUpdate(dynamic data) async {
+    if (data['email'] == globalEmail && mounted) {
+      print('SelectChat: ユーザー状態の更新を検知');
+      try {
+        // AppStateのrefreshStateを使用して状態を更新
+        await AppState.refreshState();
+
+        // 状態更新後にチャット一覧を更新
+        await getSelectChat();
+
+        // 更新通知
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('設定が更新されました'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        print('状態更新中にエラーが発生: $e');
       }
-    } catch (e) {
-      print('状態更新中にエラーが発生: $e');
     }
   }
-}
 
   @override
   void dispose() {
@@ -92,25 +92,25 @@ void _handleStatusUpdate(dynamic data) async {
     }
   }
 
- // チャット一覧の取得を修正
-Future<void> getSelectChat() async {
-  print('getSelectChat関数 開始');
-  try {
-    final List<Map<String, dynamic>> selectData = 
-        await _database.getAllSelectChat();
-    
-    if (mounted) {
-      setState(() {
-        _selectData = selectData;
-      });
-    }
-  } catch (e) {
-    print('チャット一覧の取得でエラー: $e');
-  }
-  print('getSelectChat関数 終了');
-}
+  // チャット一覧の取得を修正
+  Future<void> getSelectChat() async {
+    print('getSelectChat関数 開始');
+    try {
+      final List<Map<String, dynamic>> selectData =
+          await _database.getAllSelectChat();
 
-   // グローバル状態の更新を行うヘルパーメソッド
+      if (mounted) {
+        setState(() {
+          _selectData = selectData;
+        });
+      }
+    } catch (e) {
+      print('チャット一覧の取得でエラー: $e');
+    }
+    print('getSelectChat関数 終了');
+  }
+
+  // グローバル状態の更新を行うヘルパーメソッド
   void _updateGlobalState() {
     // プランに応じたUI要素の更新
     if (globalPlan == 'Free') {
@@ -246,13 +246,44 @@ Future<void> getSelectChat() async {
                 trailing: IconButton(
                   icon: Icon(Icons.delete),
                   onPressed: () async {
-                    if (item['id'] != null) {
-                      print("id = ${item['id']}");
-                      await _database.deleteChat(item['id']);
-                      getSelectChat();
-                    } else {
-                      print('削除できません。IDがnullです: $item');
-                    }
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text('削除の確認'),
+                          content: Text('${item['title']}を削除しますか？'),
+                          actions: [
+                            TextButton(
+                              child: Text(
+                                '戻る',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                            TextButton(
+                              child: Text(
+                                '削除',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                              onPressed: () async {
+                                if (item['id'] != null) {
+                                  await _database.deleteChat(item['id']);
+                                  getSelectChat();
+                                } else {
+                                  print('削除できません。IDがnullです: $item');
+                                }
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        );
+                      },
+                    );
                   },
                 ),
               );
