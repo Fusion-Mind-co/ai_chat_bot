@@ -342,7 +342,7 @@ class PaymentPageState extends State<PaymentPage> {
         int amount = planPrices[globalPlan] ?? 0;
         return '次回支払い予定：$dateStr (¥$amount)';
       case 'cancel':
-        return '解約予定日：$dateStr';
+        return '$globalPlan プラン終了日：$dateStr';
       case 'plan_change':
         int amount = planPrices[nextPlan ?? ''] ?? 0;
         return 'プラン変更予定日：$dateStr (¥$amount)';
