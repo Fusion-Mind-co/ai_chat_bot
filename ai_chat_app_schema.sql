@@ -69,7 +69,6 @@ CREATE TABLE public.user_account (
     login_attempts integer DEFAULT 0,
     last_attempt_time timestamp without time zone,
     unlock_token character varying(255),
-    user_name character varying(255),
     isdarkmode boolean DEFAULT false,
     selectedmodel character varying(255),
     chat_history_max_length integer DEFAULT 1000,
@@ -133,40 +132,6 @@ ALTER SEQUENCE public.user_payment_id_seq OWNED BY public.user_payment.id;
 --
 
 ALTER TABLE ONLY public.user_payment ALTER COLUMN id SET DEFAULT nextval('public.user_payment_id_seq'::regclass);
-
-
---
--- Data for Name: user_account; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.user_account (email, username, password_hash, plan, monthly_cost, created_at, last_login, login_attempts, last_attempt_time, unlock_token, user_name, isdarkmode, selectedmodel, chat_history_max_length, input_text_length, sortorder, next_process_date, last_payment_date, customer_id, next_process_type) FROM stdin;
-hiromichi.works@gmail.com	金子弘典	\N	Free	\N	2024-12-13 12:12:25.627462	2024-12-13 18:10:23.419812	0	\N	\N	\N	f	gpt-3.5-turbo	1000	200	created_at ASC	\N	\N	\N	\N
-\.
-
-
---
--- Data for Name: user_payment; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.user_payment (id, email, processed_date, plan, amount, next_process_date, message, transaction_id, created_at, updated_at, processed_by) FROM stdin;
-3229	hiromichi.works@gmail.com	2024-12-13 12:12:36.559189	Standard	1950	2024-12-13 12:13:36.528368	有料プラン加入支払い	pi_3QVPIvJg9yO0NmBs0bk8kHDq	2024-12-13 12:12:36.559189	2024-12-13 12:12:36.559189	payment
-3230	hiromichi.works@gmail.com	2024-12-13 12:41:03.358931	Standard	1950	\N	定期支払い	pi_3QVPkTJg9yO0NmBs0BoIaoQr	2024-12-13 12:41:03.358931	2024-12-13 12:41:03.358931	auto_subscription
-3231	hiromichi.works@gmail.com	2024-12-13 12:44:05.557469	Standard	1950	\N	定期支払い	pi_3QVPnPJg9yO0NmBs0J7ssnT3	2024-12-13 12:44:05.557469	2024-12-13 12:44:05.557469	auto_subscription
-3232	hiromichi.works@gmail.com	2024-12-13 12:47:07.798286	Standard	1950	\N	定期支払い	pi_3QVPqLJg9yO0NmBs0Kdcfs9B	2024-12-13 12:47:07.798286	2024-12-13 12:47:07.798286	auto_subscription
-3233	hiromichi.works@gmail.com	2024-12-13 12:50:10.085778	Standard	1950	\N	定期支払い	pi_3QVPtHJg9yO0NmBs0pN0ulb5	2024-12-13 12:50:10.085778	2024-12-13 12:50:10.085778	auto_subscription
-3234	hiromichi.works@gmail.com	2024-12-13 12:53:12.246558	Standard	0	\N	プラン解約	\N	2024-12-13 12:53:12.246558	2024-12-13 12:53:12.246558	auto_cancellation
-3235	hiromichi.works@gmail.com	2024-12-13 17:26:07.974126	Standard	1950	2024-12-13 17:27:07.946594	有料プラン加入支払い	pi_3QVUCKJg9yO0NmBs0znfcFza	2024-12-13 17:26:07.974126	2024-12-13 17:26:07.974126	payment
-3236	hiromichi.works@gmail.com	2024-12-13 17:30:19.538223	Standard	1950	\N	定期支払い	pi_3QVUGPJg9yO0NmBs0ip5XuBP	2024-12-13 17:30:19.538223	2024-12-13 17:30:19.538223	auto_subscription
-3237	hiromichi.works@gmail.com	2024-12-13 17:33:21.98941	Standard	1950	\N	定期支払い	pi_3QVUJMJg9yO0NmBs1TvJtl91	2024-12-13 17:33:21.98941	2024-12-13 17:33:21.98941	auto_subscription
-3238	hiromichi.works@gmail.com	2024-12-13 17:36:24.249687	Standard	0	\N	プラン解約	\N	2024-12-13 17:36:24.249687	2024-12-13 17:36:24.249687	auto_cancellation
-\.
-
-
---
--- Name: user_payment_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.user_payment_id_seq', 3238, true);
 
 
 --

@@ -41,7 +41,7 @@ class UserService:
             user_data = cursor.fetchone()
             if user_data:
                 return {
-                    'user_name': user_data.get('user_name', ''),
+                    'username': user_data.get('username', ''),
                     'isDarkMode': user_data.get('isdarkmode', False),
                     'selectedModel': user_data.get('selectedmodel', 'gpt-4o-mini'),
                     'chat_history_max_length': user_data.get('chat_history_max_length', 1000),

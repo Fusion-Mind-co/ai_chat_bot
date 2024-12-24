@@ -78,7 +78,7 @@ class AppState extends State<App> {
           globalSelectedModel =
               responseData['selectedModel'] ?? 'gpt-3.5-turbo';
           // ユーザーネーム
-          global_user_name = responseData['user_name'] ?? '';
+          global_username = responseData['username'] ?? '';
           // chat履歴文字数
           chatHistoryMaxLength =
               responseData['chat_history_max_length'] ?? 1000;
@@ -96,7 +96,7 @@ class AppState extends State<App> {
         print('ロードした設定:');
         print('  Sort Order: \ $globalSortOrder');
         print('  Model: \ $globalSelectedModel');
-        print('  User Name: \ $global_user_name');
+        print('  User Name: \ $global_username');
         print('  Chat History Max Length: \ $chatHistoryMaxLength');
         print('  Input Text Length: \ $input_text_length');
         print('  Monthly Cost: \ $globalMonthlyCost');
@@ -178,11 +178,11 @@ class AppState extends State<App> {
   void changeUserName(String newUserName) {
     print('changeUserName関数起動　ユーザーネームの変更');
     setState(() {
-      global_user_name = newUserName;
+      global_username = newUserName;
       userNameController.text = newUserName; // TextEditingControllerを更新
     });
     updateUserData(
-        'user_name', {'email': globalEmail, 'user_name': global_user_name});
+        'username', {'email': globalEmail, 'username': global_username});
     print("ユーザーネーム = ${newUserName}");
   }
 

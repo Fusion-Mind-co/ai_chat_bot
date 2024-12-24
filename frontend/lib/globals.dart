@@ -12,7 +12,7 @@ import 'package:http/http.dart' as http;
 String? global_DB_name;
 String? globalEmail;
 double? globalMonthlyCost;
-String? global_user_name;
+String? global_username;
 String? globalPlan;
 double globalMaxMonthlyCost = 0;
 String globalSortOrder = 'created_at ASC';

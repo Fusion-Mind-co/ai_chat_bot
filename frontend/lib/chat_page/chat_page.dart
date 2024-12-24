@@ -33,8 +33,8 @@ class ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _initializeChat() async {
-    if (global_user_name != null) {
-      setUserName(global_user_name);
+    if (global_username != null) {
+      setUserName(global_username);
     }
     await _loadChatHistory();
   }

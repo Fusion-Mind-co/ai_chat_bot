@@ -36,7 +36,7 @@ def update_field(field):
         "history_length": ("chat_history_max_length", "chat_history_max_length"),
         "sort_order": ("sortorder", "sortOrder"),
         "darkmode": ("isdarkmode", "isDarkMode"),
-        "user_name": ("user_name", "user_name"),
+        "username": ("username", "username"),
         "model": ("selectedmodel", "selectedModel"),
         "monthlycost": ("monthly_cost", "monthly_cost")
     }
@@ -67,7 +67,7 @@ def get_config_and_cost():
                 COALESCE(monthly_cost, 0.0) as monthly_cost,
                 COALESCE(chat_history_max_length, 1000) as chat_history_max_length,
                 COALESCE(input_text_length, 200) as input_text_length,
-                COALESCE(user_name, '') as user_name,
+                COALESCE(username, '') as username,
                 COALESCE(isdarkmode, false) as isdarkmode,
                 COALESCE(selectedmodel, 'gpt-4o-mini') as selectedmodel,
                 COALESCE(sortorder, 'created_at ASC') as sortorder
@@ -82,7 +82,7 @@ def get_config_and_cost():
                 "monthly_cost": 0.0,
                 "chat_history_max_length": 1000,
                 "input_text_length": 200,
-                "user_name": "",
+                "username": "",
                 "isDarkMode": False,
                 "selectedModel": "gpt-4o-mini",
                 "sortOrder": "created_at ASC"
@@ -94,7 +94,7 @@ def get_config_and_cost():
             "monthly_cost": float(user_data["monthly_cost"]),
             "chat_history_max_length": int(user_data["chat_history_max_length"]),
             "input_text_length": int(user_data["input_text_length"]),
-            "user_name": user_data["user_name"],
+            "username": user_data["username"],
             "isDarkMode": bool(user_data["isdarkmode"]),  # PostgreSQLのboolean型を正しく変換
             "selectedModel": user_data["selectedmodel"],
             "sortOrder": user_data["sortorder"]

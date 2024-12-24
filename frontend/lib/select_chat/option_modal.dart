@@ -14,7 +14,7 @@ class CustomModal {
     Function logout,
   ) async {
     TextEditingController userNameController =
-        TextEditingController(text: global_user_name);
+        TextEditingController(text: global_username);
 
 
     String? errorMessage;

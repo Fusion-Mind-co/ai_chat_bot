@@ -14,7 +14,7 @@ Future<void> loadChatHistoryFromDB(int chatId) async {
     return {
       "role": message['is_user'] == 1 ? "user" : "assistant",
       "content": message['is_user'] == 1
-          ? "$global_user_name: ${message['content']}"
+          ? "$global_username: ${message['content']}"
           : message['content'].toString()
     };
   }).toList();
@@ -25,7 +25,7 @@ Future<void> loadChatHistoryFromDB(int chatId) async {
 
 void addMessage(String role, String content) {
   String displayRole = role == "user" ? "user" : role;
-  String displayContent = role == "user" ? "$global_user_name: $content" : content;
+  String displayContent = role == "user" ? "$global_username: $content" : content;
 
   _chatHistory.add({"role": displayRole, "content": displayContent});
   _trimChatHistoryIfNeeded();
@@ -43,4 +43,4 @@ int _calculateTotalCharacterCount() {
   return _chatHistory.fold(0, (sum, message) => sum + message['content']!.length);
 }
 
-void setUserName(String? global_user_name) {}
+void setUserName(String? global_username) {}
