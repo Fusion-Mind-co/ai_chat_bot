@@ -18,9 +18,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // 環境変数のロード
+    // ⓵環境変数のロード
     await loadEnvironment();
     print('環境変数ロード完了');
+
+    // ⓶バックエンドからセキュアな値をグローバル変数に代入
+    await loadBackendConfig(); 
 
     // SQLiteデータベース初期化
     db = SQLiteDatabase.instance;  // 変更: SQLiteDatabaseのインスタンスを直接取得

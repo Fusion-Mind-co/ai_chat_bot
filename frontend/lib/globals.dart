@@ -1,10 +1,13 @@
 // globals.dart
 
+import 'dart:convert';
 import 'package:chatbot/database/sqlite_database.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 import 'package:chatbot/database/postgreSQL_logic.dart';  
 import 'package:chatbot/app.dart';  
+import 'package:http/http.dart' as http;
+
 
 String? global_DB_name;
 String? globalEmail;
@@ -13,22 +16,59 @@ String? global_user_name;
 String? globalPlan;
 double globalMaxMonthlyCost = 0;
 String globalSortOrder = 'created_at ASC';
-int chatHistoryMaxLength = 1000; // 初期値を設定
-int input_text_length = 200;
 String globalSelectedModel = 'gpt-3.5-turbo';
+int chatHistoryMaxLength = 0; 
+int input_text_length = 0;
 
 late SQLiteDatabase db;
 
 
+
+
+
+// ⓵.envファイルからサーバーURLの読み込み===============================================
+
+
 // サーバーURLを定義するグローバル変数
 String serverUrl = '';
-
-// .envファイルの読み込みとサーバーURLの設定
 Future<void> loadEnvironment() async {
   await dotenv.load();
   serverUrl = dotenv.env['SERVER_URL'] ?? 'http://localhost:5000'; // 開発用URL（デフォルト）
   print('serverUrl = $serverUrl');
 }
+
+
+// ⓶バックエンドからセキュアな値を取得===============================================
+
+String googleClientId = '';
+String myToken = '';
+int loginValue = 0;
+String loginUnit = '';
+
+// main.dart main()関数内で呼び出し
+
+Future<void> loadBackendConfig() async {
+  print('バックエンドからキーを読み込み');
+  final url = Uri.parse('$serverUrl/api/get-secret-config');
+  final response = await http.get(url);
+
+  if (response.statusCode == 200) {
+    final Map<String, dynamic> config = json.decode(response.body);
+    googleClientId = config['GOOGLE_CLIENT_ID'];
+    myToken = config['MY_TOKEN'];
+    loginValue = int.parse(config['LOGIN_VALUE']);
+    loginUnit = config['LOGIN_UNIT'];
+    print('設定が正常に読み込まれました');
+  } else {
+    print('設定の読み込みに失敗しました: ${response.statusCode}');
+  }
+}
+
+
+// ================================================================================
+
+
+
 
 
 //プラン

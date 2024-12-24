@@ -3,8 +3,25 @@ from flask import Blueprint, request, jsonify
 from ..services.user import UserService
 from ..services.tokenizer import TokenizerService
 from ..database import execute_query
+from dotenv import load_dotenv
+import os
+
 
 bp = Blueprint('user', __name__)
+
+
+@bp.route('/api/get-secret-config', methods=['GET'])
+def get_config():
+    config = {
+        "GOOGLE_CLIENT_ID": os.getenv("GOOGLE_CLIENT_ID"),
+        "MY_TOKEN": os.getenv("MY_TOKEN"),
+        "LOGIN_VALUE": os.getenv("LOGIN_VALUE"),
+        "LOGIN_UNIT": os.getenv("LOGIN_UNIT"),
+    }
+    return jsonify(config)
+
+
+
 
 @bp.route('/update/<field>', methods=['POST'])
 def update_field(field):

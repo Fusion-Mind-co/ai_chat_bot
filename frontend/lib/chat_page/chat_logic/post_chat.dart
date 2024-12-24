@@ -13,7 +13,6 @@ import 'dart:async';
 Future<Stream<String>> postChatGPTStream(String text) async {
   print("postChatGPTStream関数");
 
-  final myToken = dotenv.get('MY_TOKEN');
   var url = Uri.https("api.openai.com", "/v1/chat/completions");
   final client = http.Client();
   final streamController = StreamController<String>();
@@ -95,8 +94,6 @@ Future<Stream<String>> postChatGPTStream(String text) async {
 Future<String?> postChatGPT(String text) async {
   print("postChatGPT関数");
 
-  final myToken = dotenv.get('MY_TOKEN');
-
   var url = Uri.https(
     "api.openai.com",
     "/v1/chat/completions",
@@ -167,7 +164,6 @@ Future<String?> postChatGPT(String text) async {
 // chatタイトルをaiで生成する関数
 
 Future<String> generateChatTitle(String firstMessage) async {
-  final myToken = dotenv.get('MY_TOKEN');
   var url = Uri.https("api.openai.com", "/v1/chat/completions");
 
   try {
