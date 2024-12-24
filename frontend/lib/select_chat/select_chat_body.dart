@@ -243,48 +243,94 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
                   }
                   getSelectChat();
                 },
-                trailing: IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed: () async {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text('削除の確認'),
-                          content: Text('${item['title']}を削除しますか？'),
-                          actions: [
-                            TextButton(
-                              child: Text(
-                                '戻る',
-                                style: TextStyle(color: Colors.grey),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 編集ボタン
+                    IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () {
+                        // 現在のタイトルを初期値として持つTextEditingControllerを作成
+                        TextEditingController titleController =
+                            TextEditingController(text: item['title']);
+
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Text('タイトルの編集'),
+                              content: TextField(
+                                controller: titleController,
+                                decoration: InputDecoration(
+                                  hintText: 'チャットタイトルを入力',
+                                  border: OutlineInputBorder(),
+                                ),
+                                autofocus: true,
                               ),
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                            TextButton(
-                              child: Text(
-                                '削除',
-                                style: TextStyle(color: Colors.red),
-                              ),
-                              onPressed: () async {
-                                if (item['id'] != null) {
-                                  await _database.deleteChat(item['id']);
-                                  getSelectChat();
-                                } else {
-                                  print('削除できません。IDがnullです: $item');
-                                }
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                          ],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                              actions: [
+                                TextButton(
+                                  child: Text('キャンセル'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                                TextButton(
+                                  child: Text('保存'),
+                                  onPressed: () async {
+                                    if (item['id'] != null &&
+                                        titleController.text.isNotEmpty) {
+                                      await _database.updateChatTitle(
+                                          titleController.text, item['id']);
+                                      getSelectChat(); // リストを更新
+                                    }
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            );
+                          },
                         );
                       },
-                    );
-                  },
+                    ),
+                    // 削除ボタン（既存のコード）
+                    IconButton(
+                      icon: Icon(Icons.delete),
+                      onPressed: () async {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Text('削除の確認'),
+                              content: Text('${item['title']}を削除しますか？'),
+                              actions: [
+                                TextButton(
+                                  child: Text('戻る'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                                TextButton(
+                                  child: Text(
+                                    '削除',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                  onPressed: () async {
+                                    if (item['id'] != null) {
+                                      await _database.deleteChat(item['id']);
+                                      getSelectChat();
+                                    } else {
+                                      print('削除できません。IDがnullです: $item');
+                                    }
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
                 ),
               );
             },
