@@ -68,17 +68,25 @@ class PaymentPageState extends State<PaymentPage> {
     },
   };
 
+  // 支払い処理中フラグを追加
+  bool _isProcessingPayment = false;
+
   Future<void> _handlePayment(String plan) async {
+    // 処理中なら早期リターン
+    if (_isProcessingPayment) {
+      print('支払い処理中のため、リクエストをスキップします');
+      return;
+    }
+
     print('\n=== 支払い処理開始 ===');
     print('選択プラン: $plan');
 
-    // planを保存
     setState(() {
       selectedPlan = plan;
+      _isProcessingPayment = true; // 処理開始
     });
 
     try {
-      // 初期決済処理
       await _handleInitialPayment(plan);
       print('決済処理完了');
 
@@ -89,7 +97,6 @@ class PaymentPageState extends State<PaymentPage> {
         body: jsonEncode(
             {'email': globalEmail, 'plan': plan, 'process_type': 'payment'}),
       );
-
       print('サーバーレスポンス: ${response.statusCode}');
       print('レスポンスボディ: ${response.body}');
 
@@ -127,6 +134,12 @@ class PaymentPageState extends State<PaymentPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('エラーが発生しました: $e')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingPayment = false; // 処理完了
+        });
       }
     }
   }
@@ -506,10 +519,11 @@ class PaymentPageState extends State<PaymentPage> {
 
   Widget _buildPlanCard(String plan, int price) {
     bool isCurrentPlan = plan == globalPlan;
+    bool isDisabled = isCurrentPlan || _isProcessingPayment; // 無効化条件を追加
 
     return material.Card(
       margin: EdgeInsets.symmetric(vertical: 8),
-      color: Theme.of(context).cardColor, // カードの背景色をテーマに合わせる
+      color: Theme.of(context).cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -526,7 +540,7 @@ class PaymentPageState extends State<PaymentPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: isCurrentPlan ? null : () => _handlePayment(plan),
+                onPressed: isDisabled ? null : () => _handlePayment(plan),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
@@ -539,7 +553,7 @@ class PaymentPageState extends State<PaymentPage> {
                   ),
                 ),
                 child: Text(
-                  '申し込む',
+                  _isProcessingPayment ? '処理中...' : '申し込む', // ボタンのテキストを動的に変更
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
