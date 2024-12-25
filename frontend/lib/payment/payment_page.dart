@@ -72,6 +72,11 @@ class PaymentPageState extends State<PaymentPage> {
     print('\n=== 支払い処理開始 ===');
     print('選択プラン: $plan');
 
+    // planを保存
+    setState(() {
+      selectedPlan = plan;
+    });
+
     try {
       // 初期決済処理
       await _handleInitialPayment(plan);
@@ -97,22 +102,18 @@ class PaymentPageState extends State<PaymentPage> {
               DateTime.parse(responseData['next_process_date']);
           globalNextProcessType = 'payment';
 
-          // モデルの更新を追加
           if (responseData['selectedmodel'] != null) {
-            globalSelectedModel = responseData['selectedmodel']; // グローバル変数を更新
+            globalSelectedModel = responseData['selectedmodel'];
           }
         });
 
-        // ユーザーに成功を通知
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('プランの更新が完了しました')),
           );
         }
 
-        // 最新のユーザー状態を取得
         await _fetchUserStatus();
-        // UIの更新
         await AppState.refreshState();
       } else {
         final errorData = jsonDecode(response.body);
@@ -127,6 +128,36 @@ class PaymentPageState extends State<PaymentPage> {
           SnackBar(content: Text('エラーが発生しました: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _processPayment(Map<String, dynamic> paymentIntentData) async {
+    if (selectedPlan == null) {
+      throw Exception('選択されたプランが見つかりません');
+    }
+
+    try {
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: paymentIntentData['client_secret'],
+          merchantDisplayName: 'ChatGPT Bot',
+          style: ThemeMode.system,
+        ),
+      );
+
+      print('決済シート表示中...');
+      await Stripe.instance.presentPaymentSheet();
+      print('決済完了');
+
+      // 支払い完了後に支払い記録を作成
+      await _recordSuccessfulPayment(
+        paymentIntentData['payment_intent_id'],
+        selectedPlan!,
+        plans[selectedPlan]!['price'],
+      );
+    } catch (e) {
+      print('決済処理エラー: $e');
+      throw Exception('決済処理に失敗しました: $e');
     }
   }
 
@@ -158,23 +189,27 @@ class PaymentPageState extends State<PaymentPage> {
     await AppState.refreshState();
   }
 
-  // _processPaymentメソッドを追加
-  Future<void> _processPayment(Map<String, dynamic> paymentIntentData) async {
+  Future<void> _recordSuccessfulPayment(
+      String paymentIntentId, String plan, int amount) async {
     try {
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: paymentIntentData['client_secret'],
-          merchantDisplayName: 'ChatGPT Bot',
-          style: ThemeMode.system,
-        ),
+      final response = await http.post(
+        Uri.parse('$serverUrl/record-payment'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': globalEmail,
+          'plan': plan,
+          'amount': amount,
+          'transaction_id': paymentIntentId,
+          'message': '有料プラン加入支払い'
+        }),
       );
 
-      print('決済シート表示中...');
-      await Stripe.instance.presentPaymentSheet();
-      print('決済完了');
+      if (response.statusCode != 200) {
+        throw Exception('支払い記録の作成に失敗しました');
+      }
     } catch (e) {
-      print('決済処理エラー: $e');
-      throw Exception('決済処理に失敗しました: $e');
+      print('支払い記録作成エラー: $e');
+      // 支払い自体は成功しているので、記録のエラーはユーザーには表示しない
     }
   }
 
@@ -269,27 +304,6 @@ class PaymentPageState extends State<PaymentPage> {
       throw Exception('支払いステータスの更新に失敗しました');
     }
   }
-
-  // Future<void> createSubscription() async {
-  //   final url = Uri.parse('https://your_server_url/create-subscription');
-  //   final response = await http.post(url,
-  //       body: jsonEncode({'email': 'user_email'}),
-  //       headers: {'Content-Type': 'application/json'});
-
-  //   if (response.statusCode == 200) {
-  //     final data = jsonDecode(response.body);
-  //     final clientSecret = data['client_secret'];
-
-  //     await Stripe.instance.confirmPayment(
-  //       paymentIntentClientSecret: clientSecret,
-  //       data: PaymentMethodParams.card(
-  //         paymentMethodData: PaymentMethodData(),
-  //       ),
-  //     );
-  //   } else {
-  //     print('Error creating subscription');
-  //   }
-  // }
 
   Future<void> _fetchUserStatus() async {
     try {

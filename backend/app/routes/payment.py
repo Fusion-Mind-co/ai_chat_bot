@@ -50,10 +50,10 @@ def reserve_cancellation():
         conn.close()
 
 
-# payment.py の create_payment_intent
+
 @bp.route('/create-payment-intent', methods=['POST'])
 def create_payment_intent():
-    print("支払いインテントの作成エンドポイントが呼び出されました。")
+    print("create_payment_intent() 関数　：支払いインテントの作成")
     try:
         data = request.json
         amount = data.get('amount')
@@ -69,13 +69,11 @@ def create_payment_intent():
         try:
             # Stripe PaymentIntent作成
             result = StripeService.create_payment_intent(amount, email)
-            payment_intent_id = result.get('payment_intent_id')
             
-            # データベース更新
+            # データベース更新（next_process_dateとtypeの更新のみ）
             conn = get_db_connection()
             cursor = conn.cursor()
             try:
-                # user_accountテーブルの更新
                 cursor.execute("""
                     UPDATE user_account 
                     SET 
@@ -83,16 +81,6 @@ def create_payment_intent():
                         next_process_type = %s
                     WHERE email = %s
                 """, (process_type, email))
-
-                # 支払い記録の作成
-                StripeService.record_payment(
-                    email=email,
-                    plan=plan,
-                    amount=amount,
-                    next_process_date=datetime.now() + timedelta(minutes=1),
-                    transaction_id=payment_intent_id,
-                    message='有料プラン加入支払い'
-                )
                 
                 conn.commit()
             except Exception as e:
@@ -103,7 +91,8 @@ def create_payment_intent():
                 conn.close()
             
             return jsonify({
-                'client_secret': result['client_secret']
+                'client_secret': result['client_secret'],
+                'payment_intent_id': result['payment_intent_id']  # フロントエンドに渡すために追加
             }), 200
             
         except Exception as e:
@@ -276,3 +265,37 @@ def get_payment_history():
     finally:
         cursor.close()
         conn.close()
+
+
+# payment.py に新しいエンドポイントを追加
+@bp.route('/record-payment', methods=['POST'])
+def record_payment():
+    try:
+        data = request.json
+        email = data.get('email')
+        plan = data.get('plan')
+        amount = data.get('amount')
+        transaction_id = data.get('transaction_id')
+        message = data.get('message')
+
+        if not all([email, plan, amount, transaction_id]):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # 支払い記録を作成
+        payment_id = StripeService.record_payment(
+            email=email,
+            plan=plan,
+            amount=amount,
+            next_process_date=datetime.now() + timedelta(days=30),  # 次回処理日を30日後に設定
+            transaction_id=transaction_id,
+            message=message
+        )
+
+        return jsonify({
+            "message": "Payment recorded successfully",
+            "payment_id": payment_id
+        }), 200
+
+    except Exception as e:
+        print(f"支払い記録作成エラー: {e}")
+        return jsonify({"error": str(e)}), 500

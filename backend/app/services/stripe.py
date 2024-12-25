@@ -11,6 +11,7 @@ class StripeService:
     @staticmethod
     def create_payment_intent(amount, email):
         try:
+            print('StripeService:create_payment_intent関数')
             print(f"支払いインテント作成開始: email={email}, amount={amount}")
             
             # 顧客情報を作成または取得
