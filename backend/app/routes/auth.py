@@ -154,7 +154,8 @@ def reset_password(token):
     try:
         email = s.loads(token, salt='password-reset-salt', max_age=3600)
     except SignatureExpired:
-        return jsonify({"message": "リセットリンクの有効期限が切れています"}), 400
+        return render_template('error.html', error_message="URLの有効期限が切れています。再度リクエストしてください。"), 400
+
 
     if request.method == 'POST':
         new_password = request.form.get('new_password')

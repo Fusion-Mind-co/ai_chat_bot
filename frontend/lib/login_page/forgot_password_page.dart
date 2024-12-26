@@ -37,33 +37,36 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return Scaffold(
       appBar: AppBar(title: Text('パスワードの再設定')),
       body: Padding(
-        padding: const EdgeInsets.all(30.0),
-        child: Column(
-          children: [
-            SizedBox(height: 25),
-            Text(
-              'パスワードを再設定するため、アカウントに設定しているアドレスを入力してください',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            SizedBox(height: 10),
-            Text(
-              '送信後に届いたメールに記載されているURLから、パスワードの再設定を行ってください',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            SizedBox(height: 25),
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(labelText: "メールアドレス"),
-            ),
-            ElevatedButton(
-              onPressed: sendResetLink,
-              child: Text('再設定用メールを送信'),
-            ),
-            if (message != null)
-              Text(message!, style: TextStyle(color: Colors.red)),
-          ],
+  padding: const EdgeInsets.all(30.0),
+  child: SingleChildScrollView( // ← 追加
+    child: Column(
+      children: [
+        SizedBox(height: 25),
+        Text(
+          'パスワードを再設定するため、アカウントに設定しているアドレスを入力してください',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
         ),
-      ),
+        SizedBox(height: 10),
+        Text(
+          '送信後に届いたメールに記載されているURLから、パスワードの再設定を行ってください',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        SizedBox(height: 25),
+        TextField(
+          controller: emailController,
+          decoration: InputDecoration(labelText: "メールアドレス"),
+        ),
+        ElevatedButton(
+          onPressed: sendResetLink,
+          child: Text('再設定用メールを送信'),
+        ),
+        if (message != null)
+          Text(message!, style: TextStyle(color: Colors.red)),
+      ],
+    ),
+  ),
+),
+
     );
   }
 }
