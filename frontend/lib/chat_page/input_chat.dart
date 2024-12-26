@@ -5,14 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:chatbot/chat_page/chat_logic/post_chat.dart';
 import 'package:chatbot/chat_page/text_body.dart';
 import 'package:chatbot/globals.dart';
-import 'package:chatbot/main.dart'; // グローバルな db をインポート
+import 'package:chatbot/main.dart';
 
 final chatController = TextEditingController();
 
 class InputChat extends StatefulWidget {
   final int chatId;
   final GlobalKey<TextBodyState> textBodyKey;
-  final GlobalKey<ChatPageAppbarState> appBarKey; // AppBarのKeyを追加
+  final GlobalKey<ChatPageAppbarState> appBarKey;
   final Function loadingConfig;
 
   InputChat({
@@ -36,11 +36,11 @@ class _InputChatState extends State<InputChat> {
     });
   }
 
-
-
-
   Future<void> getInputChat() async {
     print('getInputChat() 開始');
+
+    // キーボードを隠す
+    FocusScope.of(context).unfocus();
 
     String inputChat = chatController.text;
     if (inputChat.isEmpty) {
