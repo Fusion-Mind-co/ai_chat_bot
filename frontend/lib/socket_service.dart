@@ -6,12 +6,12 @@ import 'package:flutter/material.dart';
 
 class SocketService {
   static IO.Socket? _socket;
-  
+
   // WebSocketイベントの購読を追加するメソッド
   static void addStatusUpdateListener(Function(dynamic) callback) {
     _socket?.on('user_status_update', callback);
   }
-  
+
   // WebSocketイベントの購読を解除するメソッド
   static void removeStatusUpdateListener(Function(dynamic) callback) {
     _socket?.off('user_status_update', callback);
@@ -19,7 +19,7 @@ class SocketService {
 
   static void initSocket() {
     if (_socket != null) return;
-    
+
     _socket = IO.io(serverUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
@@ -43,5 +43,15 @@ class SocketService {
   static void dispose() {
     _socket?.disconnect();
     _socket = null;
+  }
+
+  // 登録完了イベントの購読を追加
+  static void addRegistrationCompleteListener(Function(dynamic) callback) {
+    _socket?.on('registration_complete', callback);
+  }
+
+  // 登録完了イベントの購読を解除
+  static void removeRegistrationCompleteListener(Function(dynamic) callback) {
+    _socket?.off('registration_complete', callback);
   }
 }

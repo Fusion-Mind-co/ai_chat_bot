@@ -1,5 +1,6 @@
 # app/routes/auth.py
 from flask import Blueprint, request, jsonify, render_template
+from ..services.websocket import WebSocketService
 from ..services.auth import AuthService
 from ..services.email import EmailService
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
@@ -177,3 +178,75 @@ def unlock_account(token):
     return render_template('error.html', error_message="アカウントの解除に失敗しました"), 500
 
 
+
+@bp.route('/send_verification_email', methods=['POST'])
+def send_verification_email():
+    try:
+        data = request.json
+        email = data.get('email')
+        username = data.get('username')
+        password = data.get('password')
+
+        if not all([email, username, password]):
+            return jsonify({"message": "必要な情報が不足しています"}), 400
+
+        # 全ての情報をトークンに含める
+        token_data = {
+            'email': email,
+            'username': username,
+            'password': password
+        }
+        verification_token = s.dumps(token_data, salt='email-verification-salt')
+        verification_link = f"{os.getenv('SERVER_URL')}/verify_email/{verification_token}"
+        
+        if EmailService.send_verification_email(email, username, verification_link):
+            return jsonify({"message": "認証メールを送信しました"}), 200
+
+        return jsonify({"message": "メール送信に失敗しました"}), 500
+    
+    except Exception as e:
+        print(f"Error sending verification email: {e}")
+        return jsonify({"message": "サーバーエラーが発生しました"}), 500
+
+
+@bp.route('/verify_email/<token>', methods=['GET'])
+def verify_email(token):
+    try:
+        # トークンから情報を取得
+        token_data = s.loads(token, salt='email-verification-salt', max_age=86400)
+        
+        # アカウント登録処理
+        signup_data = {
+            'email': token_data['email'],
+            'username': token_data['username'],
+            'password': token_data['password'],
+            'plan': 'Free',
+            'selected_model': 'gpt-3.5-turbo'
+        }
+        
+        success, message = AuthService.signup(**signup_data)
+        
+        if success:
+            # Flaskのcurrent_appを使用
+            from flask import current_app
+            socketio = current_app.extensions.get('socketio')
+            if socketio:
+                socketio.emit('registration_complete', {
+                    'email': token_data['email'],
+                    'status': 'success'
+                })
+                print(f"WebSocket notification sent for: {token_data['email']}")
+            else:
+                print("SocketIO not initialized")
+            
+            return render_template('success.html')
+        else:
+            return render_template('error.html', error_message=message)
+
+    except SignatureExpired:
+        return render_template('error.html', 
+            error_message="認証リンクの有効期限が切れています")
+    except Exception as e:
+        print(f"Registration error: {e}")
+        return render_template('error.html', 
+            error_message="登録処理中にエラーが発生しました")

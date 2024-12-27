@@ -275,3 +275,44 @@ class AuthService:
         """, (email,))
     
     
+    @staticmethod
+    def complete_registration(email):
+        """メール認証完了後の本登録処理"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            try:
+                # トランザクション開始
+                cursor.execute("BEGIN")
+                
+                # Flutter Secure Storageに保存された情報を使って本登録
+                cursor.execute("""
+                    INSERT INTO user_account (
+                        email,
+                        username,
+                        password_hash,
+                        plan,
+                        selectedmodel,
+                        created_at,
+                        last_login
+                    ) VALUES (
+                        %s, %s, %s, 'Free', 'gpt-3.5-turbo', NOW(), NOW()
+                    )
+                """, (email, username, password_hash))
+
+                cursor.execute("COMMIT")
+                return True, "登録が完了しました", {"email": email}
+                
+            except Exception as e:
+                cursor.execute("ROLLBACK")
+                print(f"Database error during registration completion: {e}")
+                return False, "データベースエラーが発生しました", None
+                
+            finally:
+                cursor.close()
+                conn.close()
+                
+        except Exception as e:
+            print(f"Registration completion error: {e}")
+            return False, "サーバーエラーが発生しました", None

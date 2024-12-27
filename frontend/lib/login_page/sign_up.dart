@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:chatbot/login_page/verification_pending_page.dart';
 import 'package:chatbot/payment/payment_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:chatbot/globals.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SignUpPage extends StatefulWidget {
   @override
@@ -37,9 +39,13 @@ class _SignUpPageState extends State<SignUpPage> {
     });
   }
 
-
   Future<void> signup() async {
     print('signup関数実行');
+    final storage = FlutterSecureStorage();
+
+    // スマホのキーボードを隠す
+    FocusScope.of(context).unfocus();
+
     try {
       if (!isEmailValid || !isPasswordValid) {
         setState(() {
@@ -49,7 +55,7 @@ class _SignUpPageState extends State<SignUpPage> {
       }
 
       // メールアドレスの重複チェック
-      print('メールアドレスの重複チェック　/check_email');
+      print('メールアドレスの重複チェック /check_email');
       final checkEmailUrl = Uri.parse('$serverUrl/check_email');
       final checkResponse = await http.post(
         checkEmailUrl,
@@ -73,48 +79,50 @@ class _SignUpPageState extends State<SignUpPage> {
         return;
       }
 
-      // アカウント登録処理
-      print('アカウント登録処理　/signup');
-      final signupUrl = Uri.parse('$serverUrl/signup');
-      final signupResponse = await http.post(
-        signupUrl,
+      // 一時的にSecure Storageに保存（24時間の有効期限付き）
+      final expireTime =
+          DateTime.now().add(Duration(hours: 24)).toIso8601String();
+      await storage.write(key: 'temp_email', value: emailController.text);
+      await storage.write(key: 'temp_username', value: usernameController.text);
+      await storage.write(key: 'temp_password', value: passwordController.text);
+      await storage.write(key: 'temp_expire', value: expireTime);
+
+      // メール認証リクエスト送信
+      final sendVerificationUrl =
+          Uri.parse('$serverUrl/send_verification_email');
+      final verificationResponse = await http.post(
+        sendVerificationUrl,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'email': emailController.text,
           'username': usernameController.text,
-          'password': passwordController.text,
-          'plan': 'Free',
-          'selected_model': 'gpt-3.5-turbo', // Freeプランのデフォルトモデルを指定
+          'password': passwordController.text, // パスワードも送信
         }),
       );
 
-      if (signupResponse.statusCode == 200) {
-        // グローバル変数を更新
-        globalEmail = emailController.text;
-        // 登録成功後、初回フラグをtrueにして支払いページに遷移
+      if (verificationResponse.statusCode == 200) {
+        // 確認画面に遷移
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => PaymentPage(isInitialAccess: true),
+            builder: (context) => VerificationPendingPage(
+              email: emailController.text,
+            ),
           ),
         );
       } else {
-        setState(() {
-          try {
-            final Map<String, dynamic> responseData =
-                json.decode(signupResponse.body);
-            errorMessage = responseData['message'];
-          } catch (e) {
-            errorMessage = "アカウント登録に失敗しました。";
-            print('エラーの詳細: $e');
-          }
-        });
+        throw Exception('認証メールの送信に失敗しました');
       }
     } catch (e) {
       print('予期せぬエラー: $e');
       setState(() {
         errorMessage = "予期せぬエラーが発生しました。";
       });
+      // エラー時は一時保存データを削除
+      await storage.delete(key: 'temp_email');
+      await storage.delete(key: 'temp_username');
+      await storage.delete(key: 'temp_password');
+      await storage.delete(key: 'temp_expire');
     }
   }
 

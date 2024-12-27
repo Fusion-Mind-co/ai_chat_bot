@@ -89,17 +89,17 @@ String? globalNextProcessType;
 // ログイン記憶保持期間の設定
 class LoginExpiration {
   static Duration getLoginExpiration() {
-    final value = int.parse(dotenv.env['LOGIN_VALUE']!);
-    final unit = dotenv.env['LOGIN_UNIT']!;
-    
-    switch (unit) {
-      case 'minutes': return Duration(minutes: value);
-      case 'hours': return Duration(hours: value);
-      case 'days': return Duration(days: value);
-      default: throw Exception('Invalid duration unit: $unit');
+    // グローバル変数を使用
+    if (loginValue > 0 && loginUnit.isNotEmpty) {
+      switch (loginUnit) {
+        case 'minutes': return Duration(minutes: loginValue);
+        case 'hours': return Duration(hours: loginValue);
+        case 'days': return Duration(days: loginValue);
+        default: return Duration(days: 7); // デフォルト値
+      }
     }
+    return Duration(days: 7); // 値が取得できない場合のデフォルト値
   }
-
 }
 
 

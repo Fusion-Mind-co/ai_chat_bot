@@ -1,0 +1,20 @@
+<!-- templates/email_verification.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>メールアドレス認証</title>
+</head>
+<body style="font-family: sans-serif;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2>メールアドレス認証</h2>
+        <p>{{ username }}様</p>
+        <p>アカウント登録ありがとうございます。以下のリンクをクリックして、メールアドレスの認証を完了してください。</p>
+        <p>
+            <a href="{{ verification_link }}">メールアドレスを認証する</a>
+        </p>
+        <p>このリンクの有効期限は24時間です。</p>
+        <p>※このメールに心当たりがない場合は、破棄してください。</p>
+    </div>
+</body>
+</html>

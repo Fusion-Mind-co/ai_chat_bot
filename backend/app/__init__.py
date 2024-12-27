@@ -2,6 +2,7 @@
 from flask import Flask
 from flask_cors import CORS
 from .config import Config
+import os
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -9,6 +10,10 @@ def create_app(config_class=Config):
     
     # CORS設定
     CORS(app, resources={r"/*": {"origins": "*"}})
+    
+    # SocketIO初期化
+    from flask_socketio import SocketIO
+    socketio = SocketIO(app, cors_allowed_origins="*")
     
     # 各種初期化
     from .services import stripe

@@ -23,10 +23,10 @@ Future<void> main() async {
     print('環境変数ロード完了');
 
     // ⓶バックエンドからセキュアな値をグローバル変数に代入
-    await loadBackendConfig(); 
+    await loadBackendConfig();
 
     // SQLiteデータベース初期化
-    db = SQLiteDatabase.instance;  // 変更: SQLiteDatabaseのインスタンスを直接取得
+    db = SQLiteDatabase.instance; // 変更: SQLiteDatabaseのインスタンスを直接取得
     print('SQLiteデータベースが初期化されました');
 
     // Stripe設定
@@ -61,13 +61,19 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ChatGPT bot',
-      initialRoute: '/',
+      initialRoute: '/login', // 明示的に初期ルートを指定
       routes: {
-        '/': (context) => LoginPage(),
+        '/login': (context) => LoginPage(),
         '/home': (context) => App(),
         '/signup': (context) => SignUpPage(),
         '/forgot_password': (context) => ForgotPasswordPage(),
         '/payment': (context) => PaymentPage(isInitialAccess: false),
+      },
+      onGenerateRoute: (settings) {
+        // ルートが見つからない場合の処理
+        return MaterialPageRoute(
+          builder: (context) => LoginPage(),
+        );
       },
     );
   }
