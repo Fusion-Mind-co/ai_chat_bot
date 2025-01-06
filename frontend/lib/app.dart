@@ -3,7 +3,7 @@
 import 'dart:convert';
 import 'package:chatbot/login_page/google_auth_service.dart';
 import 'package:chatbot/socket_service.dart';
-import 'package:http/http.dart' as http; // httpパッケージのインポート
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
@@ -13,6 +13,8 @@ import 'package:chatbot/login_page/login_page.dart';
 import 'package:chatbot/select_chat/option_modal.dart';
 import 'package:chatbot/select_chat/select_chat_body.dart';
 import 'package:chatbot/select_chat/header.dart';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
 
 class App extends StatefulWidget {
   @override
@@ -26,8 +28,6 @@ class AppState extends State<App> {
   void initState() {
     super.initState();
     instance = this;
-
-    // WebSocket接続の初期化
     SocketService.initSocket();
   }
 
@@ -89,7 +89,10 @@ class AppState extends State<App> {
           // プラン
           globalPlan = responseData['plan'] ?? 'Free';
           // ライト/ダークモード
-          _isDarkMode = responseData['isDarkMode'] ?? false;
+          // ThemeProviderの更新
+          final isDarkMode = responseData['isDarkMode'] ?? false;
+          Provider.of<ThemeProvider>(context, listen: false)
+              .setThemeMode(isDarkMode);
         });
 
         // ロードした内容を表示
@@ -228,26 +231,15 @@ class AppState extends State<App> {
 
   @override
   Widget build(BuildContext context) {
-    final themeData = _isDarkMode ? ThemeData.dark() : ThemeData.light();
-
-    return MaterialApp(
-      // Theme widgetではなくMaterialAppを使用
-      theme: themeData.copyWith(
-        dialogTheme: DialogTheme(
-          backgroundColor: themeData.colorScheme.surface,
-        ),
+    return Scaffold(
+      // MaterialAppを削除
+      appBar: Header(
+        context,
+        changeUserName,
+        onModelChange,
+        logout,
       ),
-      home: Scaffold(
-        appBar: Header(
-          context,
-          _isDarkMode,
-          toggleTheme,
-          changeUserName,
-          onModelChange,
-          logout,
-        ),
-        body: SelectChat(loadingConfig: loadAndFetchConfigAndCost),
-      ),
+      body: SelectChat(loadingConfig: loadAndFetchConfigAndCost),
     );
   }
 }

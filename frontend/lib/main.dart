@@ -10,26 +10,25 @@ import 'package:chatbot/login_page/forgot_password_page.dart';
 import 'package:chatbot/login_page/login_page.dart';
 import 'package:chatbot/login_page/sign_up.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
 
 Future<void> main() async {
   print('main関数実行開始');
 
-  // Flutterエンジンを初期化
   WidgetsFlutterBinding.ensureInitialized();
+  
+  final themeProvider = ThemeProvider();
 
   try {
-    // ⓵環境変数のロード
     await loadEnvironment();
     print('環境変数ロード完了');
 
-    // ⓶バックエンドからセキュアな値をグローバル変数に代入
     await loadBackendConfig();
 
-    // SQLiteデータベース初期化
-    db = SQLiteDatabase.instance; // 変更: SQLiteDatabaseのインスタンスを直接取得
+    db = SQLiteDatabase.instance;
     print('SQLiteデータベースが初期化されました');
 
-    // Stripe設定
     if (serverUrl.isEmpty) {
       print('エラー: SERVER_URLが読み込めていません');
     } else {
@@ -48,8 +47,12 @@ Future<void> main() async {
       }
     }
 
-    // アプリの起動
-    runApp(MyApp());
+    runApp(
+      ChangeNotifierProvider<ThemeProvider>(
+        create: (_) => themeProvider,
+        child: const MyApp(),
+      ),
+    );
     print('アプリ起動');
   } catch (e) {
     print('初期化中にエラーが発生: $e');
@@ -57,22 +60,30 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ChatGPT bot',
-      initialRoute: '/login', // 明示的に初期ルートを指定
-      routes: {
-        '/login': (context) => LoginPage(),
-        '/home': (context) => App(),
-        '/signup': (context) => SignUpPage(),
-        '/forgot_password': (context) => ForgotPasswordPage(),
-        '/payment': (context) => PaymentPage(isInitialAccess: false),
-      },
-      onGenerateRoute: (settings) {
-        // ルートが見つからない場合の処理
-        return MaterialPageRoute(
-          builder: (context) => LoginPage(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp(
+          title: 'ChatGPT bot',
+          theme: ThemeData.light(),
+          darkTheme: ThemeData.dark(),
+          themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          initialRoute: '/login',
+          routes: {
+            '/login': (context) => LoginPage(),
+            '/home': (context) => App(),
+            '/signup': (context) => SignUpPage(),
+            '/forgot_password': (context) => ForgotPasswordPage(),
+            '/payment': (context) => PaymentPage(isInitialAccess: false),
+          },
+          onGenerateRoute: (settings) {
+            return MaterialPageRoute(
+              builder: (context) => LoginPage(),
+            );
+          },
         );
       },
     );

@@ -312,7 +312,10 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
                                 TextButton(
                                   child: Text(
                                     '削除',
-                                    style: TextStyle(color: Colors.red),
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .error), // テーマの error color を使用
                                   ),
                                   onPressed: () async {
                                     if (item['id'] != null) {

@@ -1,14 +1,14 @@
 // header.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:chatbot/theme_provider.dart';
 import 'package:chatbot/app.dart';
 import 'package:chatbot/select_chat/option_modal.dart';
-import 'package:chatbot/globals.dart'; // グローバル変数をインポート
+import 'package:chatbot/globals.dart';
 
 AppBar Header(
   BuildContext context,
-  bool isDarkMode,
-  Function toggleTheme,
   Function changeUserName,
   Function onModelChange,
   Function logout,
@@ -34,7 +34,6 @@ AppBar Header(
                   "${globalPlan}",
                   style: TextStyle(
                     fontSize: 12,
-                    color: const Color.fromARGB(255, 113, 113, 113),
                   ),
                 ),
               ),
@@ -43,10 +42,9 @@ AppBar Header(
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  "${globalSelectedModel}", // selectedModelの代わりにグローバル変数を使用
+                  "${globalSelectedModel}",
                   style: TextStyle(
                     fontSize: 12,
-                    color: const Color.fromARGB(255, 113, 113, 113),
                   ),
                 ),
               ),
@@ -58,10 +56,10 @@ AppBar Header(
     leading: IconButton(
       icon: Icon(Icons.menu),
       onPressed: () {
+        final themeProvider =
+            Provider.of<ThemeProvider>(context, listen: false);
         CustomModal.show(
           context,
-          isDarkMode,
-          toggleTheme,
           changeUserName,
           onModelChange,
           logout,
