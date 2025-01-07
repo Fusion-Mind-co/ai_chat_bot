@@ -14,7 +14,7 @@ import 'package:chatbot/select_chat/option_modal.dart';
 import 'package:chatbot/select_chat/select_chat_body.dart';
 import 'package:chatbot/select_chat/header.dart';
 import 'package:provider/provider.dart';
-import 'theme_provider.dart';
+import 'theme/theme_provider.dart';
 
 class App extends StatefulWidget {
   @override

@@ -179,6 +179,7 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        SizedBox(height: 20),
         Stack(
           children: [
             Align(
@@ -220,6 +221,7 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
             ),
           ],
         ),
+        SizedBox(height: 20),
         Expanded(
           child: ListView.builder(
             itemCount: _selectData.length,
@@ -292,7 +294,6 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
                         );
                       },
                     ),
-                    // 削除ボタン（既存のコード）
                     IconButton(
                       icon: Icon(Icons.delete),
                       onPressed: () async {
@@ -315,7 +316,7 @@ class SelectChatState extends State<SelectChat> with WidgetsBindingObserver {
                                     style: TextStyle(
                                         color: Theme.of(context)
                                             .colorScheme
-                                            .error), // テーマの error color を使用
+                                            .error),
                                   ),
                                   onPressed: () async {
                                     if (item['id'] != null) {

@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:chatbot/theme_provider.dart';
+import 'package:chatbot/theme/theme_provider.dart';
 import 'package:chatbot/app.dart';
 import 'package:chatbot/select_chat/option_modal.dart';
 import 'package:chatbot/globals.dart';
@@ -14,65 +14,55 @@ AppBar Header(
   Function logout,
 ) {
   return AppBar(
-    title: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'ChatGPT bot',
-          style: TextStyle(
-            fontSize: 20,
-            color: const Color.fromARGB(255, 113, 113, 113),
+    toolbarHeight: kToolbarHeight, // AppBarのデフォルト高さ
+    title: Center(
+      child: Text(
+        '$globalSelectedModel  /  $globalPlan',
+        style: TextStyle(
+          fontSize: 20,
+        ),
+      ),
+    ),
+    leading: Container(
+      margin: EdgeInsets.only(left: 16.0, top: 8.0, bottom: 8.0),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(5),
           ),
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "${globalPlan}",
-                  style: TextStyle(
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "${globalSelectedModel}",
-                  style: TextStyle(
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-    leading: IconButton(
-      icon: Icon(Icons.menu),
-      onPressed: () {
-        final themeProvider =
-            Provider.of<ThemeProvider>(context, listen: false);
-        CustomModal.show(
-          context,
-          changeUserName,
-          onModelChange,
-          logout,
-        );
-      },
-    ),
-    actions: <Widget>[
-      IconButton(
-        icon: Icon(Icons.logout),
         onPressed: () {
-          logout();
+          final themeProvider =
+              Provider.of<ThemeProvider>(context, listen: false);
+          CustomModal.show(
+            context,
+            changeUserName,
+            onModelChange,
+            logout,
+          );
         },
+        child: Center(
+          // Centerで縦方向のオーバーフローを防ぐ
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // 子要素を最小限の高さに調整
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.menu, size: 20), // アイコンのサイズを調整
+              SizedBox(height: 1.0), // テキストとアイコンの間にスペースを追加
+              FittedBox(
+                fit: BoxFit.scaleDown, // テキストが収まりきらない場合縮小
+                child: Text(
+                  'メニュー',
+                  style: TextStyle(fontSize: 8),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-    ],
+    ),
   );
 }
+
+

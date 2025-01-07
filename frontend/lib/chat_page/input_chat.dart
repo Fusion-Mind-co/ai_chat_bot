@@ -102,39 +102,19 @@ class _InputChatState extends State<InputChat> {
     return Column(
       children: [
         Padding(
-          // パディングを追加
-          padding: EdgeInsets.symmetric(horizontal: 10.0), // 左右に16.0のパディング
+          padding: EdgeInsets.symmetric(horizontal: 10.0),
           child: TextField(
             controller: chatController,
             maxLength: input_text_length,
             maxLines: null,
-            style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white
-                  : Colors.black,
-            ),
             decoration: InputDecoration(
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black54
-                  : Colors.white,
               labelText: _errorMessage ?? 'メッセージを入力してください',
-              labelStyle: TextStyle(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white60
-                    : Colors.black54,
-              ),
               enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white30
-                      : Colors.black26,
-                ),
                 borderRadius: BorderRadius.circular(20.0),
               ),
               focusedBorder: OutlineInputBorder(
                 borderSide: BorderSide(
-                  color: Theme.of(context).primaryColor,
                   width: 2.0,
                 ),
                 borderRadius: BorderRadius.circular(20.0),
@@ -150,12 +130,10 @@ class _InputChatState extends State<InputChat> {
         ),
         Text(
           'この応答には誤りが含まれる可能性があります。',
-          style: TextStyle(fontSize: 10, color: Colors.grey),
+          style: TextStyle(fontSize: 10), // サイズのみ指定
           textAlign: TextAlign.center,
         )
       ],
     );
   }
-
-  updateGlobalMonthlyCost() {} // グローバルコストの更新メソッド
 }

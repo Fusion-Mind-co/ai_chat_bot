@@ -11,7 +11,7 @@ import 'package:chatbot/login_page/login_page.dart';
 import 'package:chatbot/login_page/sign_up.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:provider/provider.dart';
-import 'theme_provider.dart';
+import 'theme/theme_provider.dart';
 
 Future<void> main() async {
   print('main関数実行開始');
@@ -68,8 +68,8 @@ class MyApp extends StatelessWidget {
       builder: (context, themeProvider, _) {
         return MaterialApp(
           title: 'ChatGPT bot',
-          theme: ThemeData.light(),
-          darkTheme: ThemeData.dark(),
+          theme: themeProvider.getTheme(false),    // ライトテーマ
+          darkTheme: themeProvider.getTheme(true), // ダークテーマ
           themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           initialRoute: '/login',
           routes: {
