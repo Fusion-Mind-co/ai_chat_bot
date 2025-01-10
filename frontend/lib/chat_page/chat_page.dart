@@ -1,15 +1,14 @@
-// chat_page.dart
 import 'package:flutter/material.dart';
 import 'package:chatbot/chat_page/ai_message.dart';
 import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
 import 'package:chatbot/chat_page/chat_page_appBar.dart';
 import 'package:chatbot/chat_page/input_chat.dart';
 import 'package:chatbot/chat_page/text_body.dart';
-import 'package:chatbot/database/postgreSQL_logic.dart';
-import 'package:chatbot/globals.dart'; // グローバル変数をインポート
+import 'package:chatbot/database/sqlite_database.dart';
+import 'package:chatbot/globals.dart';
 
 class ChatPage extends StatefulWidget {
-  final Function loadingConfig; // コールバックを受け取る
+  final Function loadingConfig;
   final int chatId;
 
   ChatPage({required this.chatId, required this.loadingConfig});
@@ -19,9 +18,7 @@ class ChatPage extends StatefulWidget {
 }
 
 class ChatPageState extends State<ChatPage> {
-  Map<String, dynamic>? chatData;
-
-  // GlobalKeyを定義
+  final SQLiteDatabase _database = SQLiteDatabase.instance;
   final GlobalKey<TextBodyState> _textBodyKey = GlobalKey<TextBodyState>();
   final GlobalKey<ChatPageAppbarState> _appBarKey = GlobalKey<ChatPageAppbarState>();
 
@@ -29,44 +26,55 @@ class ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _initializeChat();
-
   }
 
   Future<void> _initializeChat() async {
-    if (global_username != null) {
-      setUserName(global_username);
+    try {
+      print('チャットページの初期化開始 - chatId: ${widget.chatId}');
+      
+      // データベース接続の初期化を確認
+      await _database.database;
+      print('データベース接続確認完了');
+      
+      if (global_username != null) {
+        setUserName(global_username);
+      }
+      
+      await _loadChatHistory();
+      print('チャットページの初期化完了');
+    } catch (e) {
+      print('チャットページの初期化でエラー: $e');
     }
-    await _loadChatHistory();
   }
-
-
-// =========================================現在未使用===============================================
-  Future<void> updateMonthlyCost() async {
-    double? newCost = await fetchMonthlyCost(); // 非同期処理を完了させる
-    if (newCost != null) {
-      setState(() {
-        globalMonthlyCost = newCost; // グローバル変数を更新
-      });
-    }
-  }
-  
-// =========================================現在未使用===============================================
 
   Future<void> _loadChatHistory() async {
-    await loadChatHistoryFromDB(widget.chatId);
-    setState(() {});
+    try {
+      print('チャット履歴読込開始 - chatId: ${widget.chatId}');
+      // データベース接続を確認
+      await _database.database;
+      
+      await loadChatHistoryFromDB(widget.chatId);
+      setState(() {});
+      print('チャット履歴読込完了');
+    } catch (e) {
+      print('チャット履歴読込でエラー: $e');
+    }
   }
-  
+
+  @override
+  void dispose() {
+    // dispose時にデータベース接続を閉じない
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Theme(
-      data: theme,
+      data: Theme.of(context),
       child: Scaffold(
         appBar: ChatPageAppbar(
           chatId: widget.chatId,
-          key: _appBarKey, // GlobalKeyを設定
+          key: _appBarKey,
         ),
         body: Column(
           children: [
@@ -76,7 +84,7 @@ class ChatPageState extends State<ChatPage> {
             InputChat(
               chatId: widget.chatId,
               textBodyKey: _textBodyKey,
-              appBarKey: _appBarKey, // AppBarのKeyを渡す
+              appBarKey: _appBarKey,
               loadingConfig: widget.loadingConfig,
             ),
           ],

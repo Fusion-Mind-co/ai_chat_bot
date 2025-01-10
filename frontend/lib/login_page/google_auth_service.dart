@@ -27,8 +27,7 @@ class GoogleAuthService {
         final savedDate = DateTime.tryParse(savedDateTime);
         if (savedDate != null) {
           final difference = DateTime.now().difference(savedDate);
-          Duration expirationDuration =
-              LoginExpiration.getLoginExpiration();
+          Duration expirationDuration = LoginExpiration.getLoginExpiration();
 
           if (difference <= expirationDuration) {
             globalEmail = savedEmail;
@@ -47,7 +46,7 @@ class GoogleAuthService {
   Future<bool> signInWithGoogle(bool rememberMe) async {
     try {
       print('Googleログインプロセスを開始します');
-      await _googleSignIn.signOut();
+      await _googleSignIn.signOut(); // 既存のセッションをクリア
 
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
@@ -55,43 +54,44 @@ class GoogleAuthService {
         return false;
       }
 
+      final String email = googleUser.email; // メールアドレスを取得
+      print('Googleアカウントのメールアドレス: $email');
+
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
       print('Google認証が成功しました');
 
+      // サーバーへのリクエスト
       final response = await http.post(
         Uri.parse('$serverUrl/google-login'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'access_token': googleAuth.accessToken,
-          'email': googleUser.email,
+          'email': email,
           'name': googleUser.displayName ?? 'Unknown',
         }),
       );
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        globalEmail = googleUser.email;
+        print('サーバーログイン成功');
+        globalEmail = email;
+
+        // 重要: メールアドレスを必ず保存（rememberMeの値に関わらず）
+        await storage.write(key: "google_email", value: email);
 
         if (rememberMe) {
-          print('ログイン情報を保存します');
+          print('ログイン情報を永続保存します');
           await storage.write(key: "auth_type", value: "google");
-          await storage.write(key: "google_email", value: googleUser.email);
           await storage.write(
               key: "google_login_datetime", value: DateTime.now().toString());
-        } else {
-          print('ログイン情報は保存しません');
-          await storage.delete(key: "auth_type");
-          await storage.delete(key: "google_email");
-          await storage.delete(key: "google_login_datetime");
         }
 
-        await _loadUserConfig(googleUser.email);
-        print('ログインメッセージ: ${responseData['message']}');
+        await _loadUserConfig(email);
         return true;
+      } else {
+        print('サーバーログイン失敗: ${response.statusCode}');
+        return false;
       }
-
-      return false;
     } catch (e) {
       print('Googleログインエラー: $e');
       return false;
@@ -100,14 +100,27 @@ class GoogleAuthService {
 
   // ログアウト処理
   Future<void> signOut() async {
+    print('Google認証サービスのログアウト開始');
     try {
-      await _googleSignIn.signOut();
+      if (await _googleSignIn.isSignedIn()) {
+        await _googleSignIn.signOut();
+        print('Googleアカウントからサインアウト完了');
+      } else {
+        print('既にGoogleアカウントからサインアウトしています');
+      }
+    } catch (e) {
+      print('Googleサインアウトでエラー: $e');
+      // エラーを投げずに処理を続行
+    }
+
+    try {
       await storage.delete(key: "auth_type");
       await storage.delete(key: "google_email");
       await storage.delete(key: "google_login_datetime");
-      globalEmail = null;
+      print('Googleログイン情報の削除完了');
     } catch (e) {
-      print('Sign out error: $e');
+      print('ストレージクリアでエラー: $e');
+      // エラーを投げずに処理を続行
     }
   }
 

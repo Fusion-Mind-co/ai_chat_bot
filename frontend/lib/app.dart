@@ -1,16 +1,14 @@
 // app.dart
-
 import 'dart:convert';
+import 'package:chatbot/database/postgreSQL_logic.dart';
+import 'package:chatbot/database/sqlite_database.dart';
 import 'package:chatbot/login_page/google_auth_service.dart';
 import 'package:chatbot/socket_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
-import 'package:chatbot/database/postgreSQL_logic.dart';
 import 'package:chatbot/globals.dart';
 import 'package:chatbot/login_page/login_page.dart';
-import 'package:chatbot/select_chat/option_modal.dart';
 import 'package:chatbot/select_chat/select_chat_body.dart';
 import 'package:chatbot/select_chat/header.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +21,12 @@ class App extends StatefulWidget {
 
 class AppState extends State<App> {
   static AppState? instance;
+  bool _isDarkMode = false;
+  final GoogleAuthService _googleAuthService = GoogleAuthService();
+  final storage = FlutterSecureStorage();
+  final userNameController = TextEditingController();
+  final chatHistoryMaxLengthController = TextEditingController();
+  final inputTextLengthController = TextEditingController();
 
   @override
   void initState() {
@@ -33,206 +37,169 @@ class AppState extends State<App> {
 
   @override
   void dispose() {
-    // インスタンスのクリーンアップ
-    if (instance == this) {
-      instance = null;
-    }
+    if (instance == this) instance = null;
     SocketService.dispose();
     super.dispose();
   }
 
-  // loadAndFetchConfigAndCostをグローバルに
   static Future<void> refreshState() async {
     if (instance != null) {
       await instance!.loadAndFetchConfigAndCost();
     }
   }
 
-  bool _isDarkMode = false;
-
-  final GoogleAuthService _googleAuthService = GoogleAuthService();
-
-  final storage = FlutterSecureStorage();
-  TextEditingController userNameController = TextEditingController();
-  TextEditingController chatHistoryMaxLengthController =
-      TextEditingController();
-  TextEditingController inputTextLengthController = TextEditingController();
-
-  // ユーザー情報のロード
   Future<void> loadAndFetchConfigAndCost() async {
-    print('ユーザー情報のロード開始');
+    try {
+      print('ユーザー設定の読込開始');
+      final url =
+          Uri.parse('$serverUrl/get/config_and_cost?email=$globalEmail');
+      final response = await http.get(url);
 
-    // PostgreSQLからユーザー設定とコストを取得
-    final url = Uri.parse('$serverUrl/get/config_and_cost?email=$globalEmail');
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      var responseData = jsonDecode(response.body);
-      print('サーバーからのレスポンス: $responseData'); // デバッグ用にレスポンス内容を表示
-
-      if (responseData is Map) {
-        setState(() {
-          // ソート
-          globalSortOrder = responseData['sortOrder'] ?? 'created_at ASC';
-          // GPTモデル
-          globalSelectedModel =
-              responseData['selectedModel'] ?? 'gpt-3.5-turbo';
-          // ユーザーネーム
-          global_username = responseData['username'] ?? '';
-          // chat履歴文字数
-          chatHistoryMaxLength =
-              responseData['chat_history_max_length'] ?? 1000;
-          // 入力文字数
-          input_text_length = responseData['input_text_length'] ?? 200;
-          // 月間制限コスト
-          globalMonthlyCost = responseData['monthly_cost'] ?? 0.0;
-          // プラン
-          globalPlan = responseData['plan'] ?? 'Free';
-          // ライト/ダークモード
-          // ThemeProviderの更新
-          final isDarkMode = responseData['isDarkMode'] ?? false;
-          Provider.of<ThemeProvider>(context, listen: false)
-              .setThemeMode(isDarkMode);
-        });
-
-        // ロードした内容を表示
-        print('ロードした設定:');
-        print('  Sort Order: \ $globalSortOrder');
-        print('  Model: \ $globalSelectedModel');
-        print('  User Name: \ $global_username');
-        print('  Chat History Max Length: \ $chatHistoryMaxLength');
-        print('  Input Text Length: \ $input_text_length');
-        print('  Monthly Cost: \ $globalMonthlyCost');
-        print('  Plan: \ $globalPlan');
-        print('  Max Monthly Cost: \ $globalMaxMonthlyCost');
-        print('  Dark Mode: \ $_isDarkMode');
-      } else {
-        print('データの形式が正しくありません');
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+        if (data is Map) {
+          setState(() {
+            globalSortOrder = data['sortOrder'] ?? 'created_at ASC';
+            globalSelectedModel = data['selectedModel'] ?? 'gpt-3.5-turbo';
+            global_username = data['username'] ?? '';
+            chatHistoryMaxLength = data['chat_history_max_length'] ?? 1000;
+            input_text_length = data['input_text_length'] ?? 200;
+            globalMonthlyCost = data['monthly_cost'] ?? 0.0;
+            globalPlan = data['plan'] ?? 'Free';
+            Provider.of<ThemeProvider>(context, listen: false)
+                .setThemeMode(data['isDarkMode'] ?? false);
+          });
+          print('ユーザー設定を更新しました');
+        }
       }
-    } else {
-      print('取得失敗');
+    } catch (e) {
+      print('ユーザー設定の読込でエラー: $e');
     }
-
-    print('設定とコストのロード終了');
   }
 
-  void onModelChange(String newModel) {
-    print('onModelChange関数　モデル変更');
-    setState(() {
-      globalSelectedModel = newModel;
-    });
-    updateUserData(
-        'model', {'email': globalEmail, 'selectedModel': globalSelectedModel});
-    print("chatGPT_MODEL = ${globalSelectedModel}");
+  void onModelChange(String newModel) async {
+    try {
+      print('モデル変更: $newModel');
+      setState(() => globalSelectedModel = newModel);
+      await updateUserData('model',
+          {'email': globalEmail, 'selectedModel': globalSelectedModel});
+    } catch (e) {
+      print('モデル変更でエラー: $e');
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      print('ログアウト開始');
+
+      // データベースのクリーンアップ
+      print('データベースのクリーンアップ開始');
+      SQLiteDatabase.resetInstance();
+      print('データベースのクリーンアップ完了');
+
+      // グローバル変数をリセット
+      globalEmail = null;
+      globalPlan = 'Free';
+      globalSelectedModel = 'gpt-3.5-turbo';
+      globalMonthlyCost = 0.0;
+      chatHistoryMaxLength = 1000;
+      input_text_length = 200;
+      global_DB_name = null;
+
+      // ストレージをクリア
+      print('ストレージのクリア開始');
+      await storage.delete(key: "email");
+      await storage.delete(key: "password");
+      await storage.delete(key: "loginDateTime");
+      await storage.delete(key: "auth_type");
+      await storage.delete(key: "google_email");
+      await storage.delete(key: "google_login_datetime");
+      print('ストレージのクリア完了');
+
+      // Googleログアウト
+      print('Googleログアウト開始');
+      await _googleAuthService.signOut();
+      print('Googleログアウト完了');
+
+      print('ログアウト完了');
+    } catch (e) {
+      print('ログアウトでエラー: $e');
+    } finally {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+    }
+  }
+
+  void toggleTheme() {
+    try {
+      print('テーマ切替開始');
+      setState(() => _isDarkMode = !_isDarkMode);
+      updateUserData(
+          'darkmode', {'email': globalEmail, 'isDarkMode': _isDarkMode});
+    } catch (e) {
+      print('テーマ切替でエラー: $e');
+    }
+  }
+
+  void changeUserName(String newUserName) {
+    try {
+      print('ユーザー名変更開始');
+      setState(() {
+        global_username = newUserName;
+        userNameController.text = newUserName;
+      });
+      updateUserData(
+          'username', {'email': globalEmail, 'username': global_username});
+    } catch (e) {
+      print('ユーザー名変更でエラー: $e');
+    }
   }
 
   void changeInputTextLength(int newLength) {
-    if (newLength >= 50) {
-      setState(() {
-        input_text_length = newLength;
-        inputTextLengthController.text = newLength.toString();
-      });
+    try {
+      if (newLength >= 50) {
+        print('入力文字数変更開始');
+        setState(() {
+          input_text_length = newLength;
+          inputTextLengthController.text = newLength.toString();
+        });
 
-      // input_text_lengthが変更された場合、chatHistoryMaxLengthも更新される必要がある
-      if (chatHistoryMaxLength < input_text_length) {
-        changeChatHistoryMaxLength(input_text_length); // 新しい制約を満たすため更新
+        if (chatHistoryMaxLength < input_text_length) {
+          changeChatHistoryMaxLength(input_text_length);
+        }
+
+        updateUserData('input_length',
+            {'email': globalEmail, 'input_text_length': input_text_length});
       }
-
-      // データベースにアップロード
-      updateUserData('input_length',
-          {'email': globalEmail, 'input_text_length': input_text_length});
-      print('input_text_length = ${input_text_length}');
-    } else {
-      print('Error: input_text_length must be at least 50');
+    } catch (e) {
+      print('入力文字数変更でエラー: $e');
     }
   }
 
   void changeChatHistoryMaxLength(int newMaxLength) {
-    if (newMaxLength >= input_text_length) {
-      setState(() {
-        chatHistoryMaxLength = newMaxLength;
-        chatHistoryMaxLengthController.text = newMaxLength.toString();
-      });
-
-      // データベースにアップロード
-      updateUserData('history_length', {
-        'email': globalEmail,
-        'chat_history_max_length': chatHistoryMaxLength
-      });
-      print('chat_history_max_length = ${chatHistoryMaxLength}');
-    } else {
-      print('Error: chatHistoryMaxLength must be at least input_text_length');
-    }
-  }
-
-  // ダークモードの切り替え
-  void toggleTheme() {
-    print('toggleTheme関数起動　ダークモードの切り替え');
-    setState(() {
-      _isDarkMode = !_isDarkMode;
-    });
-
-    updateUserData(
-        'darkmode', {'email': globalEmail, 'isDarkMode': _isDarkMode});
-    print("ダークモード = ${_isDarkMode}");
-  }
-
-  // ユーザーネームの変更
-  void changeUserName(String newUserName) {
-    print('changeUserName関数起動　ユーザーネームの変更');
-    setState(() {
-      global_username = newUserName;
-      userNameController.text = newUserName; // TextEditingControllerを更新
-    });
-    updateUserData(
-        'username', {'email': globalEmail, 'username': global_username});
-    print("ユーザーネーム = ${newUserName}");
-  }
-
-  Future<void> logout() async {
-    print('ログアウト処理を開始します');
     try {
-      // 通常ログインの情報を削除
-      await storage.delete(key: "email");
-      await storage.delete(key: "password");
-      await storage.delete(key: "loginDateTime");
+      if (newMaxLength >= input_text_length) {
+        print('チャット履歴長変更開始');
+        setState(() {
+          chatHistoryMaxLength = newMaxLength;
+          chatHistoryMaxLengthController.text = newMaxLength.toString();
+        });
 
-      // Googleログインの情報を削除
-      await storage.delete(key: "auth_type");
-      await storage.delete(key: "google_email");
-      await storage.delete(key: "google_login_datetime");
-
-      // Googleログアウト処理を実行
-      await _googleAuthService.signOut();
-
-      // グローバル変数をクリア
-      globalEmail = null;
-      globalPlan = null;
-      globalMonthlyCost = 0.0;
-      chatHistoryMaxLength = 1000; // デフォルト値に戻す
-      input_text_length = 200; // デフォルト値に戻す
-
-      print('ログアウトが完了しました');
-
-      // ログインページに遷移
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginPage()),
-      );
+        updateUserData('history_length', {
+          'email': globalEmail,
+          'chat_history_max_length': chatHistoryMaxLength
+        });
+      }
     } catch (e) {
-      print('ログアウト中にエラーが発生しました: $e');
-      // エラーが発生してもユーザーをログインページに遷移させる
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginPage()),
-      );
+      print('チャット履歴長変更でエラー: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // MaterialAppを削除
       appBar: Header(
         context,
         changeUserName,

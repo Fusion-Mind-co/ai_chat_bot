@@ -59,6 +59,11 @@ class CustomModal {
                   List<String> availableModels =
                       globalPlan == 'Standard' ? GPT_Models : ['gpt-3.5-turbo'];
 
+                  // プランに応じてモデルを自動調整
+                  if (!availableModels.contains(globalSelectedModel)) {
+                    globalSelectedModel = 'gpt-3.5-turbo'; // デフォルトモデルに設定
+                  }
+
                   return SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
