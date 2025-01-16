@@ -57,7 +57,7 @@ class CustomModal {
                 builder: (context, setState) {
                   final themeProvider = Provider.of<ThemeProvider>(context);
                   List<String> availableModels =
-                      globalPlan == 'Standard' ? GPT_Models : ['gpt-3.5-turbo'];
+                      globalPlan == 'Standard' ? AI_Models : ['gpt-3.5-turbo'];
 
                   // プランに応じてモデルを自動調整
                   if (!availableModels.contains(globalSelectedModel)) {

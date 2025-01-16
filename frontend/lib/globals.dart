@@ -26,6 +26,9 @@ late SQLiteDatabase db;
 
 
 
+List<Map<String, String>> chatHistory = [];
+
+
 // ⓵.envファイルからサーバーURLの読み込み===============================================
 
 
@@ -42,6 +45,7 @@ Future<void> loadEnvironment() async {
 
 String googleClientId = '';
 String myToken = '';
+String Gemini_api_key = '';
 int loginValue = 0;
 String loginUnit = '';
 
@@ -56,9 +60,11 @@ Future<void> loadBackendConfig() async {
     final Map<String, dynamic> config = json.decode(response.body);
     googleClientId = config['GOOGLE_CLIENT_ID'];
     myToken = config['MY_TOKEN'];
+    Gemini_api_key = config['GEMINI_API_KEY'];
     loginValue = int.parse(config['LOGIN_VALUE']);
     loginUnit = config['LOGIN_UNIT'];
     print('設定が正常に読み込まれました');
+    print(Gemini_api_key);
   } else {
     print('設定の読み込みに失敗しました: ${response.statusCode}');
   }
@@ -67,8 +73,25 @@ Future<void> loadBackendConfig() async {
 
 // ================================================================================
 
+                                // 編集中
 
+// ================================================================================
 
+// モデルがどちらのAIモデルの系統かを判別する関数
+
+bool isGeminiModel(String model) {
+  return model.toLowerCase().contains('gemini');
+}
+
+bool isOpenAIModel(String model) {
+  return model.toLowerCase().contains('gpt');
+}
+
+// ================================================================================
+
+                                // 編集中
+
+// ================================================================================
 
 
 //プラン
@@ -114,7 +137,7 @@ class LoginExpiration {
 int answer_GPT_token_length = 2000;
 
 
-List<String> GPT_Models = ['gpt-4o-mini' , 'gpt-3.5-turbo' , 'gpt-4o'];
+List<String> AI_Models = ['gpt-4o-mini' , 'gpt-3.5-turbo' , 'gpt-4o','gemini-1.5-flash','gemini-1.5-pro'];
 
 // doubleは小数点を扱える型
 // 公式HPより実際のレート

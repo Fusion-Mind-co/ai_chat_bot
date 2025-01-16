@@ -20,7 +20,9 @@ class ChatPage extends StatefulWidget {
 class ChatPageState extends State<ChatPage> {
   final SQLiteDatabase _database = SQLiteDatabase.instance;
   final GlobalKey<TextBodyState> _textBodyKey = GlobalKey<TextBodyState>();
-  final GlobalKey<ChatPageAppbarState> _appBarKey = GlobalKey<ChatPageAppbarState>();
+  final GlobalKey<ChatPageAppbarState> _appBarKey =
+      GlobalKey<ChatPageAppbarState>();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -28,18 +30,22 @@ class ChatPageState extends State<ChatPage> {
     _initializeChat();
   }
 
+  void setLoading(bool isLoading) {
+    setState(() {
+      _isLoading = isLoading;
+    });
+  }
+
   Future<void> _initializeChat() async {
     try {
       print('チャットページの初期化開始 - chatId: ${widget.chatId}');
-      
-      // データベース接続の初期化を確認
       await _database.database;
       print('データベース接続確認完了');
-      
+
       if (global_username != null) {
         setUserName(global_username);
       }
-      
+
       await _loadChatHistory();
       print('チャットページの初期化完了');
     } catch (e) {
@@ -50,9 +56,7 @@ class ChatPageState extends State<ChatPage> {
   Future<void> _loadChatHistory() async {
     try {
       print('チャット履歴読込開始 - chatId: ${widget.chatId}');
-      // データベース接続を確認
       await _database.database;
-      
       await loadChatHistoryFromDB(widget.chatId);
       setState(() {});
       print('チャット履歴読込完了');
@@ -62,34 +66,36 @@ class ChatPageState extends State<ChatPage> {
   }
 
   @override
-  void dispose() {
-    // dispose時にデータベース接続を閉じない
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context),
-      child: Scaffold(
-        appBar: ChatPageAppbar(
-          chatId: widget.chatId,
-          key: _appBarKey,
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: ChatPageAppbar(
+            chatId: widget.chatId,
+            key: _appBarKey,
+          ),
+          body: Column(
+            children: [
+              Expanded(
+                child: TextBody(chatId: widget.chatId, key: _textBodyKey),
+              ),
+              InputChat(
+                chatId: widget.chatId,
+                textBodyKey: _textBodyKey,
+                appBarKey: _appBarKey,
+                loadingConfig: setLoading,
+              ),
+            ],
+          ),
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: TextBody(chatId: widget.chatId, key: _textBodyKey),
+        if (_isLoading)
+          Container(
+            color: Colors.black54,
+            child: Center(
+              child: CircularProgressIndicator(),
             ),
-            InputChat(
-              chatId: widget.chatId,
-              textBodyKey: _textBodyKey,
-              appBarKey: _appBarKey,
-              loadingConfig: widget.loadingConfig,
-            ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 }

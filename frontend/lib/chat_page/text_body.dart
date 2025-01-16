@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:chatbot/chat_page/user_message.dart';
 import 'package:chatbot/chat_page/ai_message.dart';
 import 'package:chatbot/database/sqlite_database.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class TextBody extends StatefulWidget {
   final int chatId;

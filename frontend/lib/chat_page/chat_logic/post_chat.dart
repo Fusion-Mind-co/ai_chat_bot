@@ -10,6 +10,12 @@ import 'dart:convert';
 import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
 import 'dart:async';
 
+// ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+
+// ChatGPTのポストロジック
+// (ストリーミング対応)
+
+// ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
 Future<Stream<String>> postChatGPTStream(String text) async {
   print("postChatGPTStream関数");
 
@@ -91,74 +97,83 @@ Future<Stream<String>> postChatGPTStream(String text) async {
   }
 }
 
-Future<String?> postChatGPT(String text) async {
-  print("postChatGPT関数");
+// ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
 
-  var url = Uri.https(
-    "api.openai.com",
-    "/v1/chat/completions",
+// Geminiのポストロジック
+
+// ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+
+Future<Map<String, dynamic>> postGemini(String input) async {
+  // 履歴のトリミング処理を追加
+  final maxTokens = 1024; // トークン数上限（例）
+  
+  // Gemini用の履歴フォーマットに変換
+final truncatedHistory = trimChatHistory(chatHistory, maxTokens);
+
+
+// Gemini用の履歴フォーマットに変換
+final formattedHistory = truncatedHistory.map((msg) {
+  return {
+    "parts": [
+      {"text": msg["content"]}
+    ],
+    "role": msg["role"] == "user" ? "user" : "model"
+  };
+}).toList();
+
+// 現在のユーザーメッセージを追加
+formattedHistory.add({
+  "parts": [
+    {"text": input}
+  ],
+  "role": "user"
+});
+
+
+  // リクエストボディ
+  final requestBody = json.encode({
+    "contents": formattedHistory,
+    "generationConfig": {
+      "temperature": 0.7,
+      "maxOutputTokens": answer_GPT_token_length,
+    }
+  });
+
+  // APIリクエスト送信
+  final response = await http.post(
+    Uri.https('generativelanguage.googleapis.com',
+        '/v1beta/models/$globalSelectedModel:generateContent'),
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": Gemini_api_key,
+    },
+    body: requestBody,
   );
 
-  try {
-    addMessage("user", text);
-    final chatHistory = getChatHistory();
-    print('postChatGPT: チャット履歴取得完了: $chatHistory'); // デバッグポイント
-
-    final requestBody = json.encode({
-      "model": globalSelectedModel,
-      "messages": chatHistory,
-      "max_tokens": answer_GPT_token_length,
-    });
-
-    print('リクエストボディ: $requestBody'); // デバッグポイント
-
-    //ユーザーが投げた「履歴込みメッセージ(chatHistory)」のトークン数を計算
-    String combinedMessages =
-        chatHistory.map((message) => message['content']).join(' ');
-
-    int userTokenCount = await getToken(combinedMessages);
-    print('ユーザーが投げたトークン数: $userTokenCount'); // デバッグポイント
-
-    final response = await http
-        .post(
-          url,
-          body: requestBody,
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer $myToken"
-          },
-        )
-        .timeout(Duration(seconds: time_out_value))
-        .catchError((error) {
-          print('HTTPリクエストエラー: $error');
-          print('time_out_value: $time_out_value');
-        });
-
-    print('postChatGPT: レスポンス受信: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      Map<String, dynamic> data = json.decode(utf8.decode(response.bodyBytes));
-      String answer = data['choices'][0]['message']['content'];
-      print('postChatGPT: GPTからの回答: $answer'); // デバッグポイント
-
-      int GPTtokenCount = await getToken(answer);
-      print('GPTからの回答トークン数: $GPTtokenCount'); // デバッグポイント
-
-      int user_text_length = combinedMessages.length;
-      int gpt_text_length = answer.length;
-      CostManagement(userTokenCount, GPTtokenCount, globalSelectedModel,
-          user_text_length, gpt_text_length);
-
-      addMessage("assistant", answer);
-      return answer;
-    } else {
-      print('サーバーエラー: ${response.statusCode}'); // デバッグポイント
-      return null; // エラーが発生した場合はnullを返す
-    }
-  } catch (e) {
-    print('通信エラー: $e'); // デバッグポイント
-    return null;
+  // レスポンス処理
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    final generatedText = data["candidates"][0]["content"]["parts"][0]["text"];
+    return {"status": "success", "response": generatedText};
+  } else {
+    throw Exception('エラー: ${response.statusCode} - ${response.body}');
   }
+}
+
+// トリミング関数
+List<Map<String, dynamic>> trimChatHistory(
+    List<Map<String, dynamic>> history, int maxTokens) {
+  int currentTokens = 0;
+  List<Map<String, dynamic>> trimmedHistory = [];
+
+  for (var message in history.reversed) {
+    int messageTokens = message["content"].length; // トークン数の概算
+    if (currentTokens + messageTokens > maxTokens) break;
+    trimmedHistory.insert(0, message); // 最新のメッセージから追加
+    currentTokens += messageTokens;
+  }
+
+  return trimmedHistory;
 }
 
 // chatタイトルをaiで生成する関数

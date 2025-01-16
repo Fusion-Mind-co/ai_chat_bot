@@ -9,7 +9,8 @@ List<Map<String, String>> getChatHistory() {
 }
 
 Future<void> loadChatHistoryFromDB(int chatId) async {
-  final List<Map<String, dynamic>> history = await _database.getChatMessages(chatId);
+  final List<Map<String, dynamic>> history =
+      await _database.getChatMessages(chatId);
   _chatHistory = history.map((message) {
     return {
       "role": message['is_user'] == 1 ? "user" : "assistant",
@@ -25,10 +26,11 @@ Future<void> loadChatHistoryFromDB(int chatId) async {
 
 void addMessage(String role, String content) {
   String displayRole = role == "user" ? "user" : role;
-  String displayContent = role == "user" ? "$global_username: $content" : content;
+  String displayContent =
+      role == "user" ? "$global_username: $content" : content;
 
   _chatHistory.add({"role": displayRole, "content": displayContent});
-  _trimChatHistoryIfNeeded();
+  _trimChatHistoryIfNeeded(); // 長さを超えた場合のトリミング
 }
 
 void _trimChatHistoryIfNeeded() {
@@ -40,7 +42,23 @@ void _trimChatHistoryIfNeeded() {
 }
 
 int _calculateTotalCharacterCount() {
-  return _chatHistory.fold(0, (sum, message) => sum + message['content']!.length);
+  return _chatHistory.fold(
+      0, (sum, message) => sum + message['content']!.length);
 }
 
 void setUserName(String? global_username) {}
+
+List<Map<String, String>> trimChatHistory(
+    List<Map<String, String>> history, int maxTokens) {
+  int totalTokens = 0;
+  List<Map<String, String>> trimmedHistory = [];
+
+  for (int i = history.length - 1; i >= 0; i--) {
+    int messageTokens = history[i]["content"]?.length ?? 0; // 文字数を仮のトークン数として計算
+    if (totalTokens + messageTokens > maxTokens) break;
+    trimmedHistory.insert(0, history[i]);
+    totalTokens += messageTokens;
+  }
+
+  return trimmedHistory;
+}

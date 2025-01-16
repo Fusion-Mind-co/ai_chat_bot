@@ -1,5 +1,4 @@
-// input_chat.dart
-
+import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
 import 'package:chatbot/chat_page/chat_page_appBar.dart';
 import 'package:flutter/material.dart';
 import 'package:chatbot/chat_page/chat_logic/post_chat.dart';
@@ -18,7 +17,7 @@ class InputChat extends StatefulWidget {
   InputChat({
     required this.chatId,
     required this.textBodyKey,
-    required this.appBarKey, // 追加
+    required this.appBarKey,
     required this.loadingConfig,
   });
 
@@ -29,7 +28,6 @@ class InputChat extends StatefulWidget {
 class _InputChatState extends State<InputChat> {
   String? _errorMessage;
 
-  // エラーメッセージの表示を管理するメソッド
   void setErrorMessage(String? errorMessage) {
     setState(() {
       _errorMessage = errorMessage;
@@ -49,13 +47,16 @@ class _InputChatState extends State<InputChat> {
     }
 
     try {
+      // ローディングアニメーションを表示
+      widget.loadingConfig(true);
+
       // チャットが初回かつタイトルが初期値かチェック
       final chatData = await db.getSelectChatById(widget.chatId);
       final messages = await db.getChatMessages(widget.chatId);
       bool isFirstChat = messages.isEmpty;
       bool isDefaultTitle = chatData?['title'] == "新しいchat";
 
-      // 入力フィールドをクリアして、ローディング状態を解除
+      // 入力フィールドをクリアしてエラーメッセージをリセット
       chatController.clear();
       setErrorMessage(null);
 
@@ -64,19 +65,37 @@ class _InputChatState extends State<InputChat> {
           await db.postChatDB(widget.chatId, inputChat, true, null);
       widget.textBodyKey.currentState?.loadMessages(widget.chatId);
 
-      try {
-        // ストリーミングレスポンスを取得
+      // モデル判定と処理
+      if (isGeminiModel(globalSelectedModel)) {
+        final response = await postGemini(inputChat);
+        if (response != null) {
+          // データベースに応答を保存
+          await db.postChatDB(
+              widget.chatId, response["response"], false, userMessageId);
+
+          // **履歴を更新**
+          addMessage("assistant", response["response"]);
+          widget.textBodyKey.currentState?.loadMessages(widget.chatId);
+
+          // **タイトル生成**
+          if (isFirstChat && isDefaultTitle) {
+            String newTitle = await generateChatTitle(inputChat);
+            await db.updateChatTitle(newTitle, widget.chatId);
+            widget.appBarKey.currentState?.updateTitleText(newTitle);
+          }
+        } else {
+          setErrorMessage('応答が取得できませんでした');
+        }
+      } else if (isOpenAIModel(globalSelectedModel)) {
         Stream<String> gptStream = await postChatGPTStream(inputChat);
 
-        // テキストボディにストリーミングメッセージを追加
         widget.textBodyKey.currentState?.addStreamingMessage(
           gptStream,
           (String completeMessage) async {
-            // メッセージ完了時の処理
             await db.postChatDB(
                 widget.chatId, completeMessage, false, userMessageId);
 
-            // 初回チャットの場合のタイトル生成
+            // タイトル生成 (OpenAI)
             if (isFirstChat && isDefaultTitle) {
               String newTitle = await generateChatTitle(inputChat);
               await db.updateChatTitle(newTitle, widget.chatId);
@@ -84,16 +103,15 @@ class _InputChatState extends State<InputChat> {
             }
 
             await db.updateChatUpdatedAt(widget.chatId);
-            widget.loadingConfig();
           },
         );
-      } catch (e) {
-        print('GPTストリーミングエラー: $e');
-        setErrorMessage('GPTの応答が取得できませんでした');
       }
     } catch (e) {
       setErrorMessage('通信エラーが発生しました');
       print('通信エラーが発生しました: $e');
+    } finally {
+      // 必ずローディングを終了
+      widget.loadingConfig(false);
     }
   }
 
@@ -130,9 +148,9 @@ class _InputChatState extends State<InputChat> {
         ),
         Text(
           'この応答には誤りが含まれる可能性があります。',
-          style: TextStyle(fontSize: 10), // サイズのみ指定
+          style: TextStyle(fontSize: 10),
           textAlign: TextAlign.center,
-        )
+        ),
       ],
     );
   }

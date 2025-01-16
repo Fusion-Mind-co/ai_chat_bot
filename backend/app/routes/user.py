@@ -15,6 +15,7 @@ def get_config():
     config = {
         "GOOGLE_CLIENT_ID": os.getenv("GOOGLE_CLIENT_ID"),
         "MY_TOKEN": os.getenv("MY_TOKEN"),
+        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
         "LOGIN_VALUE": os.getenv("LOGIN_VALUE"),
         "LOGIN_UNIT": os.getenv("LOGIN_UNIT"),
     }
