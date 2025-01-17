@@ -1,3 +1,5 @@
+// input_chat.dart
+
 import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
 import 'package:chatbot/chat_page/chat_page_appBar.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,7 @@ import 'package:chatbot/chat_page/chat_logic/post_chat.dart';
 import 'package:chatbot/chat_page/text_body.dart';
 import 'package:chatbot/globals.dart';
 import 'package:chatbot/main.dart';
+import 'package:chatbot/chat_page/chat_logic/chat_history.dart';
 
 final chatController = TextEditingController();
 
@@ -41,6 +44,8 @@ class _InputChatState extends State<InputChat> {
     FocusScope.of(context).unfocus();
 
     String inputChat = chatController.text;
+
+    // 入力が無ければメッセージを表示して終了
     if (inputChat.isEmpty) {
       setErrorMessage("メッセージを入力してください");
       return;
@@ -65,19 +70,17 @@ class _InputChatState extends State<InputChat> {
           await db.postChatDB(widget.chatId, inputChat, true, null);
       widget.textBodyKey.currentState?.loadMessages(widget.chatId);
 
-      // モデル判定と処理
+      // ChatHistoryに追加
+      ChatHistory.addMessage("user", inputChat);
       if (isGeminiModel(globalSelectedModel)) {
         final response = await postGemini(inputChat);
         if (response != null) {
-          // データベースに応答を保存
           await db.postChatDB(
               widget.chatId, response["response"], false, userMessageId);
 
-          // **履歴を更新**
-          addMessage("assistant", response["response"]);
+          ChatHistory.addMessage("assistant", response["response"]);
           widget.textBodyKey.currentState?.loadMessages(widget.chatId);
 
-          // **タイトル生成**
           if (isFirstChat && isDefaultTitle) {
             String newTitle = await generateChatTitle(inputChat);
             await db.updateChatTitle(newTitle, widget.chatId);
@@ -94,8 +97,8 @@ class _InputChatState extends State<InputChat> {
           (String completeMessage) async {
             await db.postChatDB(
                 widget.chatId, completeMessage, false, userMessageId);
+            ChatHistory.addMessage("assistant", completeMessage);
 
-            // タイトル生成 (OpenAI)
             if (isFirstChat && isDefaultTitle) {
               String newTitle = await generateChatTitle(inputChat);
               await db.updateChatTitle(newTitle, widget.chatId);
@@ -110,7 +113,6 @@ class _InputChatState extends State<InputChat> {
       setErrorMessage('通信エラーが発生しました');
       print('通信エラーが発生しました: $e');
     } finally {
-      // 必ずローディングを終了
       widget.loadingConfig(false);
     }
   }

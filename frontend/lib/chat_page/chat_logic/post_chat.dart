@@ -24,12 +24,12 @@ Future<Stream<String>> postChatGPTStream(String text) async {
   final streamController = StreamController<String>();
 
   try {
-    addMessage("user", text);
-    final chatHistory = getChatHistory();
+    ChatHistory.addMessage("user", text);
+    final messages = ChatHistory.getFormattedHistory(isGemini: false);
 
     final requestBody = json.encode({
       "model": globalSelectedModel,
-      "messages": chatHistory,
+      "messages": messages,
       "max_tokens": answer_GPT_token_length,
       "stream": true,
     });
@@ -68,8 +68,8 @@ Future<Stream<String>> postChatGPTStream(String text) async {
           } else if (line == 'data: [DONE]') {
             print('ストリーム完了');
             print('完全なメッセージ: $fullMessage');
-            addMessage("assistant", fullMessage);
-            await Future.delayed(Duration(milliseconds: 100)); // 遅延を追加
+            ChatHistory.addMessage("assistant", fullMessage);
+            await Future.delayed(Duration(milliseconds: 100));
             await streamController.close();
           }
         },
@@ -104,59 +104,48 @@ Future<Stream<String>> postChatGPTStream(String text) async {
 // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
 
 Future<Map<String, dynamic>> postGemini(String input) async {
-  // 履歴のトリミング処理を追加
-  final maxTokens = 1024; // トークン数上限（例）
-  
-  // Gemini用の履歴フォーマットに変換
-final truncatedHistory = trimChatHistory(chatHistory, maxTokens);
+  try {
+    // Gemini用のフォーマットで履歴を取得
+    final formattedHistory = ChatHistory.getFormattedHistory(isGemini: true);
+    
+    // 現在のメッセージを追加
+    formattedHistory.add({
+      "parts": [{"text": "$global_username: $input"}],
+      "role": "user"
+    });
 
+    // リクエストボディの構築
+    final requestBody = json.encode({
+      "contents": formattedHistory,
+      "generationConfig": {
+        "temperature": 0.7,
+        "maxOutputTokens": answer_GPT_token_length,
+      }
+    });
 
-// Gemini用の履歴フォーマットに変換
-final formattedHistory = truncatedHistory.map((msg) {
-  return {
-    "parts": [
-      {"text": msg["content"]}
-    ],
-    "role": msg["role"] == "user" ? "user" : "model"
-  };
-}).toList();
+    // APIリクエスト送信
+    final response = await http.post(
+      Uri.https('generativelanguage.googleapis.com',
+          '/v1beta/models/$globalSelectedModel:generateContent'),
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": Gemini_api_key,
+      },
+      body: requestBody,
+    );
 
-// 現在のユーザーメッセージを追加
-formattedHistory.add({
-  "parts": [
-    {"text": input}
-  ],
-  "role": "user"
-});
-
-
-  // リクエストボディ
-  final requestBody = json.encode({
-    "contents": formattedHistory,
-    "generationConfig": {
-      "temperature": 0.7,
-      "maxOutputTokens": answer_GPT_token_length,
+    // レスポンス処理
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final generatedText = data["candidates"][0]["content"]["parts"][0]["text"];
+      return {"status": "success", "response": generatedText};
+    } else {
+      print('Gemini APIエラー: ${response.statusCode} - ${response.body}');
+      throw Exception('APIエラー: ${response.statusCode}');
     }
-  });
-
-  // APIリクエスト送信
-  final response = await http.post(
-    Uri.https('generativelanguage.googleapis.com',
-        '/v1beta/models/$globalSelectedModel:generateContent'),
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": Gemini_api_key,
-    },
-    body: requestBody,
-  );
-
-  // レスポンス処理
-  if (response.statusCode == 200) {
-    final data = json.decode(response.body);
-    final generatedText = data["candidates"][0]["content"]["parts"][0]["text"];
-    return {"status": "success", "response": generatedText};
-  } else {
-    throw Exception('エラー: ${response.statusCode} - ${response.body}');
+  } catch (e) {
+    print('Gemini処理エラー: $e');
+    throw e;
   }
 }
 

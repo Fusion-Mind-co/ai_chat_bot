@@ -1,64 +1,104 @@
+// chat_history.dart
+
 import 'package:chatbot/database/sqlite_database.dart';
 import 'package:chatbot/globals.dart';
 
-List<Map<String, String>> _chatHistory = [];
-final SQLiteDatabase _database = SQLiteDatabase.instance;
+class ChatMessage {
+  final String role;
+  final String content;
+  final bool isUser;
 
-List<Map<String, String>> getChatHistory() {
-  return _chatHistory;
-}
+  ChatMessage({
+    required this.role,
+    required this.content,
+    required this.isUser,
+  });
 
-Future<void> loadChatHistoryFromDB(int chatId) async {
-  final List<Map<String, dynamic>> history =
-      await _database.getChatMessages(chatId);
-  _chatHistory = history.map((message) {
+  Map<String, dynamic> toOpenAIFormat() {
     return {
-      "role": message['is_user'] == 1 ? "user" : "assistant",
-      "content": message['is_user'] == 1
-          ? "$global_username: ${message['content']}"
-          : message['content'].toString()
+      "role": isUser ? "user" : "assistant",
+      "content": isUser ? "$global_username: $content" : content,
     };
-  }).toList();
+  }
 
-  _trimChatHistoryIfNeeded();
-  print('chatHistory : ${_chatHistory}');
-}
-
-void addMessage(String role, String content) {
-  String displayRole = role == "user" ? "user" : role;
-  String displayContent =
-      role == "user" ? "$global_username: $content" : content;
-
-  _chatHistory.add({"role": displayRole, "content": displayContent});
-  _trimChatHistoryIfNeeded(); // 長さを超えた場合のトリミング
-}
-
-void _trimChatHistoryIfNeeded() {
-  int totalLength = _calculateTotalCharacterCount();
-  while (totalLength > chatHistoryMaxLength && _chatHistory.isNotEmpty) {
-    _chatHistory.removeAt(0);
-    totalLength = _calculateTotalCharacterCount();
+  Map<String, dynamic> toGeminiFormat() {
+    return {
+      "parts": [{"text": isUser ? "$global_username: $content" : content}],
+      "role": isUser ? "user" : "model"
+    };
   }
 }
 
-int _calculateTotalCharacterCount() {
-  return _chatHistory.fold(
-      0, (sum, message) => sum + message['content']!.length);
-}
+class ChatHistory {
+  static final ChatHistory _instance = ChatHistory._internal();
+  factory ChatHistory() => _instance;
+  ChatHistory._internal();
 
-void setUserName(String? global_username) {}
+  static ChatHistory get instance => _instance;
 
-List<Map<String, String>> trimChatHistory(
-    List<Map<String, String>> history, int maxTokens) {
-  int totalTokens = 0;
-  List<Map<String, String>> trimmedHistory = [];
+  final List<ChatMessage> _messages = [];
+  final SQLiteDatabase _database = SQLiteDatabase.instance;
 
-  for (int i = history.length - 1; i >= 0; i--) {
-    int messageTokens = history[i]["content"]?.length ?? 0; // 文字数を仮のトークン数として計算
-    if (totalTokens + messageTokens > maxTokens) break;
-    trimmedHistory.insert(0, history[i]);
-    totalTokens += messageTokens;
+  List<ChatMessage> get messages => List.unmodifiable(_messages);
+
+  static Future<void> loadFromDB(int chatId) async {
+    await _instance._loadFromDB(chatId);
   }
 
-  return trimmedHistory;
+  Future<void> _loadFromDB(int chatId) async {
+    final List<Map<String, dynamic>> history = 
+        await _database.getChatMessages(chatId);
+    
+    _messages.clear();
+    _messages.addAll(history.map((message) => ChatMessage(
+      role: message['is_user'] == 1 ? "user" : "assistant",
+      content: message['content'].toString(),
+      isUser: message['is_user'] == 1,
+    )));
+
+    _trimIfNeeded();
+  }
+
+  static void addMessage(String role, String content) {
+    _instance._addMessage(role, content);
+  }
+
+  void _addMessage(String role, String content) {
+    bool isUser = role == "user";
+    _messages.add(ChatMessage(
+      role: role,
+      content: content,
+      isUser: isUser,
+    ));
+    _trimIfNeeded();
+  }
+
+  void _trimIfNeeded() {
+    int totalLength = _calculateTotalLength();
+    while (totalLength > chatHistoryMaxLength && _messages.isNotEmpty) {
+      _messages.removeAt(0);
+      totalLength = _calculateTotalLength();
+    }
+  }
+
+  int _calculateTotalLength() {
+    return _messages.fold(0, (sum, msg) => sum + msg.content.length);
+  }
+
+  static List<Map<String, dynamic>> getFormattedHistory({required bool isGemini}) {
+    return _instance._getFormattedHistory(isGemini);
+  }
+
+  List<Map<String, dynamic>> _getFormattedHistory(bool isGemini) {
+    if (_messages.isEmpty) return [];
+
+    final maxMessages = 10; // 履歴の最大メッセージ数を制限
+    final startIdx = _messages.length > maxMessages ? 
+        _messages.length - maxMessages : 0;
+    
+    return _messages
+        .sublist(startIdx)
+        .map((msg) => isGemini ? msg.toGeminiFormat() : msg.toOpenAIFormat())
+        .toList();
+  }
 }

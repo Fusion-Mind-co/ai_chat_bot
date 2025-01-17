@@ -42,10 +42,6 @@ class ChatPageState extends State<ChatPage> {
       await _database.database;
       print('データベース接続確認完了');
 
-      if (global_username != null) {
-        setUserName(global_username);
-      }
-
       await _loadChatHistory();
       print('チャットページの初期化完了');
     } catch (e) {
@@ -57,7 +53,7 @@ class ChatPageState extends State<ChatPage> {
     try {
       print('チャット履歴読込開始 - chatId: ${widget.chatId}');
       await _database.database;
-      await loadChatHistoryFromDB(widget.chatId);
+      await ChatHistory.loadFromDB(widget.chatId);
       setState(() {});
       print('チャット履歴読込完了');
     } catch (e) {
