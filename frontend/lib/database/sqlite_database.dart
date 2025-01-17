@@ -19,7 +19,12 @@ class SQLiteDatabase {
 
   Future<Database> get database async {
     try {
+      if (global_DB_name == null) {
+        throw Exception('Database name is not initialized');
+      }
+
       if (_database == null || !_isInitialized) {
+        print('Initializing database with name: $global_DB_name');
         _database = await _initDB();
         _isInitialized = true;
       } else {
@@ -27,34 +32,38 @@ class SQLiteDatabase {
         try {
           await _database!.query('sqlite_master', limit: 1);
         } catch (e) {
-          print('データベース接続テスト失敗。再接続します');
+          print('Database connection test failed. Reconnecting...');
           _database = await _initDB();
         }
       }
       return _database!;
     } catch (e) {
-      print('データベース接続エラー: $e');
+      print('Database connection error: $e');
       rethrow;
     }
   }
 
   Future<Database> _initDB() async {
     try {
+      if (global_DB_name == null) {
+        throw Exception('Database name is null during initialization');
+      }
+
       final dbPath = await getDatabasesPath();
       final path = join(dbPath, global_DB_name! + '.db');
 
-      print('データベース初期化: $path');
+      print('Initializing database at path: $path');
       return await openDatabase(
         path,
         version: 1,
         onCreate: _createDB,
         onOpen: (db) {
-          print("データベース ${global_DB_name}.db を開きました");
+          print('Database $global_DB_name.db opened successfully');
           _isInitialized = true;
         },
       );
     } catch (e) {
-      print('データベース初期化エラー: $e');
+      print('Database initialization error: $e');
       _isInitialized = false;
       rethrow;
     }
@@ -63,13 +72,13 @@ class SQLiteDatabase {
   static Future<void> resetInstance() async {
     if (_instance != null) {
       if (_instance!._database != null) {
-        print('既存のデータベース接続をクローズします');
+        print('Closing existing database connection');
         await _instance!._database!.close();
       }
       _instance!._database = null;
       _instance!._isInitialized = false;
       _instance = null;
-      print('データベースインスタンスをリセットしました');
+      print('Database instance reset completed');
     }
   }
 

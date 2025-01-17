@@ -1,4 +1,6 @@
 // google_auth_service.dart
+import 'package:chatbot/database/sqlite_database.dart';
+import 'package:crypto/crypto.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -126,6 +128,11 @@ class GoogleAuthService {
 
   Future<void> _loadUserConfig(String email) async {
     try {
+      // まずデータベース名を設定
+      var bytes = utf8.encode(email);
+      global_DB_name = sha256.convert(bytes).toString();
+      print('Database name set to: $global_DB_name');
+
       final response = await http.get(
         Uri.parse('$serverUrl/get/config_and_cost?email=$email'),
       );
@@ -137,12 +144,18 @@ class GoogleAuthService {
         chatHistoryMaxLength = config['chat_history_max_length'] as int;
         input_text_length = config['input_text_length'] as int;
 
+        // データベースの初期化を確実に行う
+        await SQLiteDatabase.resetInstance();
+        await SQLiteDatabase.instance.database;
+
         print('User config loaded successfully');
         print('Plan: $globalPlan');
         print('Monthly Cost: $globalMonthlyCost');
+        print('Database initialized successfully');
       }
     } catch (e) {
       print('Error loading user config: $e');
+      rethrow; // エラーを上位に伝播させる
     }
   }
 }
